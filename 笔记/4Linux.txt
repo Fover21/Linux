@@ -1,0 +1,589 @@
+day104Linux
+
+博客地址：https://www.cnblogs.com/pyyu/articles/9355477.html
+
+今日内容：
+
+#查看操作系统详细信息
+cat /etc/os-release 
+
+#查看系统版本信息
+cat /etc/redhat-release 
+CentOS Linux release 7.4.1708 (Core) 
+#查看内核版本号
+uname -r
+3.10.0-693.el7.x86_64
+#查看系统多少位
+uname -m
+x86_64
+
+
+#查看内核所有信息
+uname -a
+
+
+
+#公司的一个技术组的权限分配
+
+#运维组  root用户，root用户组，这是最高权限的组部门
+
+#前端组  qianduan1  qianduan2       前端组 
+
+#后端组   kangcheng  xiaoming      后端组 
+
+#查看用户身份权限
+id  用户名
+#root用户创建普通用户，普通用户的uid从1000开始
+#创建普通用户   useradd 创建用户，同时创建用户组，再创建用户家目录
+
+#更改用户密码   passwd 
+
+
+#普通用户，更改自己的密码
+passwd   #且不能指定用户，直接直接输入，更改自己的密码
+1.输入正确的当前用户密码
+2.输入新密码
+3.确认新密码
+
+
+#linux切换用户身份 
+
+su 命令
+
+su  -  用户名 
+
+#root用户可以随意切换普通用户，不需要密码
+#普通用户切换root，必须输入密码
+
+su - root  #输入的是root的密码
+sudo su -  #输入当前用户的密码，并且这个用户得在/etc/sudoers中才能成功登陆root
+
+
+
+#存放用户身份信息的文件
+/etc/passwd 
+#存放用户组的文件
+/etc/group
+#存放用户密码的文件
+/etc/shadow
+
+
+#创建用户组
+groupadd  
+
+#强制删除用户及家目录
+userdel -rf  banzhang 
+
+#Linux使用root身份去执行命令，以解决权限不够的问题
+1.修改/etc/sudoers文件，添加想要执行sudo命令的用户
+2.vim /etc/sudoers 
+3.写入
+	## Allow root to run any commands anywhere 
+	root    ALL=(ALL)       ALL
+	mjj     ALL=(ALL)       ALL   #在这里写入你想添加的用户
+	xiaolv  ALL=(ALL)       ALL 
+	
+4.此时就可以通过sudo命令。给普通用户添加超级权限
+
+sudo ls /root /
+
+
+
+#Linux文件权限
+r   可读   可以对文件 读取   4
+w	可写	可以写入文件内容  2
+x 	可执行	可以执行这个文件  1 
+-   没有权限   
+-			rw-(user)		r--	(group )			r--(others)
+文件类型	user的权限	group的权限		others的权限
+普通文件    可读，可写  可读            可读 
+
+#文件夹的权限
+d		rwx	rwx	r-x. 2 mjj  mjj   6 Nov 30 10:04 嘤嘤嘤
+
+l  软连接 
+
+
+文件夹  
+
+r    可以对此目录执行ls列出所有文件
+w    可以在这个目录创建文件
+x    可以cd进入这个目录，或者查看详细信息
+
+
+#权限分配，linux有三个用户身份，可以设置权限，分别是：
+user	所属用户
+gourp 	所属用户组
+other 	谁也不属于，其他人的身份
+
+
+#useradd 用户添加命令
+创建用户的同时，创建用户组
+会在/etc/passwd中添加用户
+在/etc/group中添加用户组 
+
+
+#更改文件/文件夹的权限
+chmod 命令去更改文件权限
+
+chmod   对谁操作  加减什么权限   对象
+	语法是：  u  代表user
+			  g   代表group
+			  o   代表others
+chmod   u+rwx(4+2+1)   文件
+chmod   g+rwx   文件 
+chmod   o+rwx   文件 
+转化成 ↓↓↓↓这个写法 
+chmod  7 7  7  文件  #给文件所有的用户身份，添加 可读可写可执行 
+
+
+
+
+d     rwx        rwx         rwx.      2 mjj  mjj   6 Nov 30 10:04 嘤嘤嘤
+
+文件夹 7(mjj)    7(mjj)     7(others)  
+
+d    r--    -wx   r-x  
+
+一个一个用户的去改  ，这
+chmod  u-wx   嘤嘤嘤
+chmod  g-r   
+chmod  o-w   饮饮饮
+
+
+
+#更改文件权限
+mjj.txt 
+
+chmod  755 mjj.txt 
+-rwx r-x r-x 
+
+chmod 465  mjj.txt 
+-r-- rw- r-x
+
+
+
+chmod 5  6  7  mjj
+d r-x rw- rwx
+
+
+#linux修改文件所属用户，所属组
+
+chown  用户身份  对象 
+
+chgrp  组身份  对象 
+
+
+-rw-r--r--. 1 root root 0 Nov 30 10:45 mjj.txt
+
+#你必须确认有这个用户存在，有这个组存在
+/etc/passwd  里面是否有wupeiqi
+grep 'wupeiqi' /etc/passwd 
+
+grep 'wupeiqi' /etc/group 
+
+chown   wupeiqi    mjj.txt 
+
+chgrp  wupeiqi  mjj.txt 
+
+
+#更改  用户  所  在的 组 
+
+mjj   mjj 
+#id  用户名
+# id  mjj 
+uid=1003(mjj) gid=1003(mjj) groups=1003(mjj)
+
+
+uid=1003(mjj) gid=0(root) groups=0(root)
+# 用mjj登陆，创建一个文件mjj.py 
+mjj.py 所属用户是mjj，所属组是mjj
+
+-rw-rw-r--. 1 mjj mjj 0 Nov 30 11:31 mjj.py
+
+
+#需求是 我把mjj.py的所属组给更改为wupeiqi 
+
+-rw-rw-r--. 1 mjj wuepqi 0 Nov 30 11:31 mjj.py
+
+
+
+#linux创建快捷方式
+
+ln -s  目标文件  当前快捷方式
+
+#/opt/python3/bin/python3.6
+
+#想要快捷的输入python3.6就指向/opt/python3/bin/python3.6
+
+
+#思路
+1.把#/opt/python3/bin/python3.6 这个python3.6这个解释器，软连接到 path路径下
+2.  ln  -s   /opt/python3/bin/python3.6    /usr/bin/python3 
+3. 直接输入python3，就会执行/opt/python3/bin/python3.6 
+
+#不用软连接，通过添加path的方式，直接使用python3.6
+思路：
+1.肯定是把  /opt/python3/bin/python3.6  这个文件夹的路径，添加到path中
+2.当我输入 python3.6的时候，系统会通过path中指定的路径，找到python3.6 
+
+
+解决方案：
+[root@localhost opt]# echo $PATH   
+#path环境变量，放的是目录绝对路径
+/usr/local/sbin:
+/usr/local/bin:
+/usr/sbin:
+/usr/bin:
+/root/bin:
+/opt/python3/bin 
+
+
+2.  当我输入python3.6的时候
+
+
+
+#linux命令提示符更改，PS1变量
+
+\h　　主机名第一个名字
+\t　　时间24小时制HHMMSS
+\W　　利用basename取得工作目录名
+\w　　完整工作目录
+
+
+#linux变量配置一次，退出会话后失效
+PS1='[\u@\h \w \t]\$'
+
+#linux的全局环境变量配置文件
+
+vim /etc/profile 
+
+
+#linux解压缩
+#Linux压缩文件，都调用tar命令
+
+
+tar  参数  压缩文件
+
+-x 解压缩
+-f  指定哪个文件
+-c  压缩 
+-v 
+
+解包/解压    tar  -xf   压缩文件 
+
+打包文件/压缩文件    tar -cf  压缩后的文件地址    要压缩的内容
+
+tar -cf /home/xiaolaodi.tar  小老弟 
+
+
+#Linux查看网络端口的命令
+netstat -tunlp 
+
+
+#服务器的ip地址
+
+127.0.0.1  本机回环地址，代表这个服务器自己，只能自己ping同自己
+		   python manage.py  runserver 127.0.0.1:8000 
+		   
+192.168.12.85    代表当前机器的ip地址 
+		   python manage.py  runserver 192.168.12.85:8000
+		   在同一个局域网内，192.168.12.xx 这里面的人 都能访问
+		   
+0.0.0.0   及是127.0.0.1 又是 192.168.12.85 
+			python manage.py  runserver 0.0.0.0:8000
+		   
+		   
+公网ip    全世界联网的人都能访问 
+	python manage.py  runserver 123.206.16.61:8000
+	
+
+
+
+
+#kill 杀掉进程 
+
+#如果你杀一个进程，死活杀不掉
+
+kill 3124  
+
+# kill -9  3124  #强制杀死进程，无论进程运行在什么状态，一定会杀死，（此命令需谨慎，会影响你服务运转）
+
+
+#kilall 杀死进程以及相关进程信息
+
+nginx   master  
+worker nginx 
+nginx 
+nginx 
+
+
+killall nginx  #一次性全部杀掉和nginx有关的进程
+
+
+#linux的防火墙概念
+#因为如果你不关防火墙，很可能你后面运行 django、nginx、mysql
+#防火墙可能会阻挡端口流量的 出口
+#也会阻挡外来请求的  入口 
+
+
+#selinux  iptables   firewalld  
+1.关闭selinux
+	1.获取selinux状态
+	getenforce 
+	2.临时关闭selinux，重启后又会生效
+	setenforce 0
+	3.永久关闭selinux，写入到selinux配置文件
+	vim /etc/selinux/config 
+	SELINUX=disabled   #更改为这个
+	4.重启后selinux永久关闭
+
+2.iptables (软件防火墙)
+	1.查看防火墙规则
+	iptables -L 
+	2.清空防火墙规则
+	iptables -F
+	3.关闭防火墙软件，这个服务永久关闭
+	systemctl stop firewalld  
+	
+	systemctl disable firewall  从开机自启中，移除这个防火请服务，永久关闭
+	
+
+
+
+#在干it活的时候
+1.报错就是最好的解决办法，如果程序报错，去google，去百度，查询这个错
+2.排错思想，通过OSI七层模型去思考
+
+
+
+
+
+
+想要编码同一，显示正常的话
+都得server和client端编码统一
+
+#修改linux中文编码支持
+#修改文件
+[root@localhost /home 14:59:48]#cat /etc/locale.conf 
+LANG="zh_CN.UTF-8"
+#读取这个文件，使得生效
+source /etc/locale.conf 
+
+
+#显示磁盘空间大小
+df -h
+
+#更改主机名
+hostnamectl set-hostname pyyuc
+
+#DNS  域名解析系统
+#在linux的配置文件是
+
+[root@s14linux ~ 15:05:00]#cat /etc/resolv.conf 
+# Generated by NetworkManager
+nameserver 223.5.5.5    #域名服务器
+nameserver 223.6.6.6
+#常见的域名服务器有 
+8.8.8.8
+114.114.114.114
+223.5.5.5   #阿里巴巴 
+223.6.6.6
+119.29.29.29    #腾讯的DNS
+
+
+
+#dns服务器
+
+
+域名和ip的对应关系
+
+一个域名解析一个ip
+
+
+多个域名解析到一个ip
+
+
+
+一个域名解析到多个ip 
+
+
+linux解析dns的命令
+nslookup  域名  
+
+
+
+#linux的计划任务，软件名叫做crond
+#设置你的服务，每周3的晚上8点 自动重启一下
+
+
+#在一个小本本上写上定时任务，到了什么时间做什么事
+
+1.准备一个小本本，crontab 
+2.写上你要做什么事，就是 定时任务的 任务条目
+
+
+
+crontab 计划任务
+
+*  *  *  *  *   命令
+分 时 日 月  周  
+
+
+1 * * * *  每小时
+
+每天晚上10:30关机，			注意 24小时制
+
+*  *  *  *  *   命令
+分 时 日 月  周  
+30  22 *  * *  关机
+
+
+
+每月的第7和第8天和第30天的零时重启机器
+
+  
+*  *  *  *  *   命令
+分 时 日 月  周 
+0  0  7,8,30  *  *   重启机器
+
+每月的1-15日零点发工资 
+
+0  0  1-15 *  *  发工资 
+
+
+每2小时 重启一次机器
+
+
+所有命令一定要用绝对路径来写！
+
+#每分钟执行一次命令
+*/1 * * * * 命令
+
+#每小时的3,15分执行命令
+
+*  *  *  *  * 
+分 时 日 月 周
+
+3,15   *  * * *   命令
+
+
+#在上午8-11点的第3和第15分钟执行
+
+
+
+*  *  *  *  * 
+分 时 日 月 周
+3,15   8-11  *  *  *  
+
+
+
+
+#每晚21:30执行命令
+
+*  *  *  *  * 
+分 时 日 月 周
+
+30  21  *  *  *  
+
+
+
+
+#周六、日的1：30执行命令
+
+*  *  *  *  * 
+分 时 日 月 周
+
+30  1  *  *  6,0   命令  
+
+ 
+(crondtab是必须取5个值的交集，必须符合5个条件才能正确工作)
+
+
+
+
+
+#每周一到周五的凌晨1点，清空/tmp目录的所有文件
+
+0 1  *  * 1-5  rm -rf /tmp/*
+
+#每晚的21:30重启nginx
+
+30 21 * * *  nginx restart 
+
+
+#每月的1,10,22日的4:45重启nginx
+
+
+45 4 1,10,22 * *   nginx restart 
+
+#每个星期一的上午8点到11点的第3和15分钟执行命令
+
+
+3,15 8-11 * * 1  命令
+
+
+#Linux软件安装的方式
+1.rpm包安装(需要手动解决软件依赖关系，非常麻烦)
+假如我要安装mysql   
+1.下载mysql-5.5.rpm 
+通过rpm命令去安装软件
+
+rpm -ivh  mysql-5.5.rpm
+	(报错，此mysql5.5依赖于其他的软件包，你需要先解决这个依赖问题，才能正确安装mysql5.5)
+
+
+
+2.yum安装 （其实也是下载rpm包然后进行自动安装，自动查找，解决依赖关系）
+yum命令是自动下载软件包
+yum源，就是一个文件夹的概念
+这个文件夹叫做  /etc/yum.repos.d/  只有存放在这个目录中的  xx.repo 文件，
+才会被识别是yum源，才会被yum instlal 工具 所调用
+
+
+
+配置yum源的步骤
+1.可以移除默认的yum仓库，也就是删除 /etc/yum.repos.d/底下所有的.repo文件（踢出国外的yum源）
+
+
+
+1.配置yum源，找到阿里云的官方镜像源地址  https://opsx.alibaba.com/mirror
+2.下载centos7的yum源
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+
+3.清空旧的yum缓存 
+yum clean all 
+4.生成新的yum仓库缓存（这个缓存来自于阿里云的yum仓库，便于加速软件下载）
+yum makecache 
+5.配置一个第三方的 额外仓库源  （epel源），这个源的作用是，如果阿里云源找不到这个软件，就在这里找
+wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+
+
+此时就可以通过yum命令自由的下载软件啦！
+yum install redis  #这个redis就是从epel中下载
+
+#下载一个nginx  web服务器软件
+
+yum install nginx  -y 
+
+#下载好了之后，（通过yum安装的软件，都可以通过系统服务管理命令，来管理它的start/stop/restart）
+
+#启动nginx服务
+systemctl start/stop/restart nginx 
+#查看nginx服务状态
+systemctl status nginx 
+#
+
+
+
+
+
+
+3.编码编译安装(可自定制安装软件的需求，以及软件的功能扩展)
+
+
+
+
+
+
+

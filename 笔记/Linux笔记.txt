@@ -1,0 +1,317 @@
+day105Linux
+
+今日内容：
+安装python3
+
+1.下载python3源码，选择3.6.7因为ipython依赖于>3.6的python环境
+wget https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tar.xz
+2.解压缩源码包，去除xz后缀
+xz -d Python-3.6.7.tar.xz 
+3.解压缩源码包，去除.tar后缀
+tar -xf Python-3.6.7.tar
+4.解决编译安装python3所需的软件依赖   ******** 很重要
+备注：解决这些依赖关系后期才能正常运转python3.6，
+如果不解决，会出现各种报错信息，此时还得重新编译python3.6
+yum install gcc patch libffi-devel python-devel  zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel db4-devel libpcap-devel xz-devel -y
+
+5.开始进行编译安装
+	分为三部曲
+	1.调用源码包路径底下的configure这个脚本文件
+	./configure  --prefix=/opt/python36/
+		
+	2.执行make指令，开始编译  (此步骤还不会生成/opt/python36这个文件夹)
+		#这个编译是个什么鬼？
+			-翻译 python解释器是对代码进行一行一行的翻译，并且转化成机器码去执行
+				print('hello world ')
+				
+				python  脚本.py 
+				
+			-编译 ，编译型的语言，在运行代码之前，有一个编译的过程，（将代码，编译转化成一个二进制文件）
+				- c 
+				- c++ 
+				- java 
+				- golang 
+					main.go   
+						fmt.Println('hello world')
+					
+				go run main.go 
+				
+				
+				go build main.go #编译生成一个可执行命令	
+								-在window底下 生成一个 main.exe 
+								-  main 
+								
+								
+				
+		
+	3. make install  安装软件 （此步才是安装软件的过程）
+		-才会生成一个 /opt/python36这个软件安装路径
+		make install  
+
+6.编译安装ok，没有报错后，就可以正常使用python3了
+7.快捷使用python3.6的方式
+	以下配置方式，二选一，请你选path配置
+	
+	1.软连接(这一步很麻烦，并且不适用于virtualenv的创建) 
+		ln -s /opt/python36/bin/python3.6    /usr/bin/python3  #但是这一步还没有pip
+		ln -s /opt/python36/bin/pip3   /usr/bin/pip3     
+		
+	2.环境变量的配置
+		1.echo $PATH 
+		/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin
+		2.配置python36的目录，加入环境变量
+		强调！！！
+		强调！！！
+		强调！！！  
+		因为path的路径查找是有优先级顺序的！！！
+		
+		并且在配置virtualenv的时候，优先以先找到的python环境为base环境
+		
+		#请将python36的目录放到path的第一层
+		/opt/python36/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin:
+		
+	3.配置环境变量，永久生效，写入到文件/etc/profile中，每次登录就生效
+	
+	vim  /etc/profile  #将此配置写到最低行
+	PATH=/opt/python36/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin
+
+	source /etc/profile  #读取这个文件，让python3生效
+	
+8.此时可以正确使用python3啦！
+ 
+9.检查所有python的文件夹关系
+[root@s14linux /opt 11:05:09]#ls
+python36(这个是工作的，已经安全号的python3软件包目录) 
+Python-3.6.7(这个是python3的源码文件夹，安装成功后可删)
+Python-3.6.7.tar  可删
+
+ 
+ 
+ 
+ 
+ 
+	
+9.升级pip工具，升级pip的版本
+pip3 install --upgrade pip 
+
+
+安装ipython解释器
+1.安装ipython，指定douban源下载
+pip3 install -i https://pypi.douban.com/simple  ipython 
+
+2.安装朱皮特
+pip3 install -i https://pypi.douban.com/simple  jupyter
+
+
+3.进入ipython环境，给jupyter设置密码
+ipython  #进入ipython的交互式界面
+
+from IPython.lib import passwd
+
+passwd()#生成jupyter登录的密码
+
+
+
+4.生成jupter的的配置文件
+jupyter notebook --generate-config --allow-root
+
+vim ~/.jupyter/jupyter_notebook_config.py
+
+修改如下配置一致即可，去掉注释符  #  才能读取代码
+
+	c.NotebookApp.ip = '建议写当前linux机器的ip地址'
+	c.NotebookApp.open_browser = False
+	c.NotebookApp.port = 8000
+
+6.启动朱皮特
+jupyter notebook  --allow-root  #启动notebook
+
+ip:8000  端口访问你的jupyter页面
+
+
+7.如果启动不了，很可能是防火墙问题
+
+iptables -L  #查看规则 
+
+iptables -F #清空规则
+
+
+systemctl stop firewalld  #关闭防火墙服务
+
+systemctl disable firewalld  #从开机自启中，移除这个防火墙服务，永久关闭
+
+#还有一个selinux得关闭
+	1.  getenforce    查看selinux规则
+	2. 临时关闭selinux    setenforce 0
+	
+	注意
+	永久关闭selinux，需要重启生效
+	vim /etc/selinux/config 
+	写入以下配置
+	SELINUX=disabled
+	#重启服务器生效,selinux永久disabled
+	
+	
+
+#自由选择python3源码包的版本
+https://www.python.org/ftp/python/
+https://www.python.org/ftp/python/3.7.1/Python-3.7.1.tgz
+
+
+
+
+#现在有个需求，我现在有两个项目，一个得运行于django1.1.11 ，还有一个版本得跑在django2.0上 
+python3 manage.py runserver  0.0.0.0:8000     #我得调用django的模块，  pip3 list ，运行了django1.11.11
+
+python3 manage.py runserver  0.0.0.0:9000     # 还得调用django的模块，我想运行django2.0
+
+#问题，能调用一个解释器吗？
+
+
+
+1.买俩电脑，装俩python3
+2.装多个python解释器，在当前linux下，安装一个python3.6 安装一个python3.7 
+python3.6 manage.py runserver  0.0.0.0:8000     #我得调用django的模块，  pip3 list ，运行了django1.11.11
+
+python3.7 manage.py runserver  0.0.0.0:9000     # 还得调用django的模块，我想运行django2.0
+
+
+3. 使用虚拟解释器环境，可以在一台服务器上，运行多个python解释器的环境
+并且这个虚拟环境的创建，非常快速，简洁，好用
+	1.  新建虚拟环境  venv1
+	
+	2.  django2运行在venv2 
+
+#安装django1.11.11
+pip3 install -i https://pypi.douban.com/simple django==1.11.11
+
+
+
+
+#linux下的虚拟环境安装(virtualenv)，以宿主机的python解释器为主体，然后复制的多个虚拟环境
+
+
+1.通过pip3安装虚拟环境
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple virtualenv
+
+2. 通过virtualenv命令，创建第一个新的虚拟环境
+virtualenv --no-site-packages --python=python3     venv1
+
+virtualenv --no-site-packages --python=python3     venv2 
+
+virtualenv --no-site-packages --python=python3     venv3 
+
+
+virtualenv --no-site-packages --python=python3     venv4  
+
+virtualenv --no-site-packages --python=python3     venv5 
+
+
+
+	参数解释
+	--no-site-packages  创建一个干净，隔离宿主机环境的虚拟环境
+	--python=python3   #指定你的虚拟环境，以哪个解释器为base环境，我的这个是以我机器上的python3解释器为主体
+	
+3.激活虚拟环境，切换宿主机环境，进入虚拟环境的环境变量
+source /opt/all_env/venv1/bin/activate
+
+
+4.检查环境变量PATH，检查是否正确激活了虚拟环境
+(venv1) [root@s14linux ~ 12:03:48]#echo $PATH
+/opt/all_env/venv1/bin:/opt/python36/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin:
+
+
+5.检查你当前的python3和pip3来自于哪里
+
+which python3 
+
+(venv1) [root@s14linux ~ 12:04:12]#which python3
+/opt/all_env/venv1/bin/python3
+
+which pip3 
+
+6.使用venv1虚拟环境，安装一个django1.11.11
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple django==1.11.11
+
+7.测试运行在一个服务器上，运行两个django版本
+	1.宿主机python下运行django2.0
+	2.虚拟环境下运行django1.11.11
+	
+8.退出虚拟环境
+deactivate
+
+
+
+练习要求：
+
+不要使用宿主机的python环境
+
+1.安装好两个虚拟环境 venv1  venv2 
+
+2.分别在venv1中启动django2.0
+
+venv2中启动django1.1.11
+
+3.展示两个不同的django欢迎页面
+	
+
+
+服务器环境之保证本地和服务器开发环境一致性的配置：
+1.通过命令导出当前python解释器的pip3包环境
+pip3 freeze >  requirements.py    #这个requirements.py文件，就存放了正常运转的开发软件依赖包的信息
+
+2.将此requirements.py文件传到服务器上
+	上传办法
+	1.  yum install lrzsz  
+		这个lrzsz软件提供了两个命令
+		1.   sz (发送，下载)  从linux往windows下载
+		
+		
+			sz  你想传输的文件名字
+		
+		
+		2.   rz(接收，上传) 从windows往linux上传
+		
+			rz  直接输入rz命令
+		
+		
+	2.  通过xftp(公司用xftp)
+	
+	
+	
+	
+虚拟环境管理之virtualenvwrapper安装使用步骤：
+1.下载安装 virtualenvwrapper
+pip3 install -i https://pypi.douban.com/simple virtualenvwrapper
+
+
+2.执行脚本，让当前机器支持virtualenvwrapper，但是有一个问题，重启后，退出会话后，这个功能就失效了
+
+3.配置全局变量，让每次登陆linux时候，就加载这个virtualenvwrapper.sh脚本文件，使得virtualenvwrapper这个工具生效
+
+	#打开这个用户环境变量配置文件，写入以下信息，export 就是读取一段shell变量的命令
+
+	vim   ~/.bashrc      #这个文件代表用户环境变量，每次登陆时候加载
+
+	export WORKON_HOME=~/Envs   #设置virtualenv的统一管理目录
+	export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'   #添加virtualenvwrapper的参数，生成干净隔绝的环境
+	export VIRTUALENVWRAPPER_PYTHON=/opt/python36/bin/python3.6     #指定python解释器，（这个得根据你自己机器环境来配）
+	source  /opt/python36/bin/virtualenvwrapper.sh      #执行virtualenvwrapper安装脚本，这个脚本放在你的python3.6解释器bin目录下
+	读取文件，使得生效，此时已经可以使用virtalenvwrapper
+	source ~/.bashrc
+
+4.开始使用virtualenvwrapper，创建一个venv1
+mkvirtualenv  venv1    #这一步会创建venv1，并且放入到WORKON_HOME变量定义目录下，并且自动激活虚拟环境
+
+lsvirtualenv   #查看当前机器所有的虚拟环境
+
+workon   #用于激活虚拟环境，也用于在多个虚拟环境中来回切换，
+
+rmvirtualenv  #用于删除虚拟环境，也会自动找到所有的虚拟环境
+
+cdvirtualenv  #用于直接进入虚拟环境的目录，此命令需要激活虚拟环境
+
+cdsitepackages  #用于直接进入pip3软件包的目录
+
+5.友情提醒
+使用了virtualenvwrapper 就不需要再手动安装virtualenv了，
