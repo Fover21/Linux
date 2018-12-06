@@ -1,0 +1,392 @@
+
+
+mysql博客地址：https://www.cnblogs.com/pyyu/p/9467289.html
+redis博客地址：https://www.cnblogs.com/pyyu/p/9843950.html
+
+
+mariadb其实就是mysql
+mysql已经被oracle收购，它即将闭源，马上要开始收费了
+因此还想免费试用开源的数据库mysql，就在centos7上，将mysql分支为mariadb
+
+
+安装mariadb，在centos7底下:
+linux软件包的格式  mysql.rpm 
+
+1.通过yum去安装
+	1.linux的yum软件管理目录在 /etc/yum.repos.d
+	2.在这个目录底下，主要是*.repo这个文件，就会被识别为yum源文件
+	
+第一种方式是，通过阿里云的yum源去下载(第三方的yum源，可能会版本较低，且软件不全，可能找不到)
+CentOS-Base.repo    epel.repo   
+
+	yum install mariadb-server   #yum安装mariadb    因为这个阿里云特别快，咱们用他去学习，加速下载  300kb/s 
+	
+	mariadb-server                     x86_64                     1:5.5.60-1.el7_5                       base                      11 M
+	为依赖而安装:
+	mariadb                            x86_64                     1:5.5.60-1.el7_5                       base                     8.9 M
+	perl-DBD-MySQL                     x86_64                     4.023-6.el7                            base                     140 k
+	为依赖而更新:
+	mariadb-libs                       x86_64                     1:5.5.60-1.el7_5                       base                     758 k
+
+
+
+
+第二种方式是，通过mariadb官方的yum源去下载(一定是这个软件最正确的yum源，且包都是最新的)
+	1.下载一个第三方的软件，顺序就是去官网找到这个软件的下载方式
+
+	
+	yum install MariaDB-server MariaDB-client  #区分大小写  ，这个方式是取国外下载mariadb，速度太慢  30kb/s  
+
+依赖关系解决
+
+=====================================================================================================================================
+ Package                              架构                  版本                                        源                      大小
+=====================================================================================================================================
+正在安装:
+ MariaDB-client                       x86_64                10.1.37-1.el7.centos                        mariadb                 40 M
+ MariaDB-server                       x86_64                10.1.37-1.el7.centos                        mariadb                104 M
+ MariaDB-shared                       x86_64                10.1.37-1.el7.centos                        mariadb                1.3 M
+      替换  mariadb-libs.x86_64 1:5.5.56-2.el7
+为依赖而安装:
+ MariaDB-common                       x86_64                10.1.37-1.el7.centos                        mariadb                123 k
+ boost-program-options                x86_64                1.53.0-27.el7                               base                   156 k
+ galera                               x86_64                25.3.24-1.rhel7.el7.centos                  mariadb                8.1 M
+	
+
+	
+	
+1.下载mariadb，通过阿里云的源
+yum install mariadb-server
+	
+2.通过yum安装的软件，systemctl start/stop/restart/status  mariadb  
+	
+systemctl start mariadb #启动mariadb数据库
+
+3.初始化mariadb
+mysql_secure_installation    #直接输入这个命令，设置root密码，删除匿名用户等等操作
+
+4.配置myariadb远程登录，可以通过windows，pycharm等客户端进行连接，在远端登录的话，就必须得输入redhat这个密码
+
+grant all privileges on *.* to root@'%' identified by 'redhat';
+
+授予 所有的 权限  在  所有的库.所有的表   用户名@"所有的地址"     identified by   "密码";
+
+5.刷新授权表，使得权限立即生效
+flush privileges;
+
+6.更改mysql的密码
+set password = PASSWORD('redhat123');
+
+7.创建普通用户s14
+create user s14@'%' identified by 's14666';
+
+8.查询用户信息
+select host,user,password  from user;
+
+9.授权语句
+grant 权限 on 数据库.表名 to 账户@主机名            对特定数据库中的特定表授权
+grant 权限 on 数据库.* to 账户@主机名            　　对特定数据库中的所有表给与授权
+grant 权限1,权限2,权限3 on *.* to 账户@主机名   　　 对所有库中的所有表给与多个授权
+grant all privileges on *.* to 账户@主机名   　　 对所有库和所有表授权所有权限
+grant create,select,insert on *.* to root@'%' identified by "密码"
+
+10.数据库的中文设置
+	1.查看数据库编码
+	\s 
+	2.修改mysql的配置文件 /etc/my.cnf ，加入以下信息
+	
+	[mysqld]
+	character-set-server=utf8
+	collation-server=utf8_general_ci
+	log-error=/var/log/mysqld.log
+	[client]
+	default-character-set=utf8
+	[mysql]
+	default-character-set=utf8
+	
+	3.修改了配置文件，重启服务
+	systemctl restart mariadb 
+
+	4.查看数据库创建的编码，只有在更新了数据库编码之后，创建的数据库，才会使用这个编码
+	show create database s16;
+	
+	5.可以测试创建table，写入中文数据
+	
+11.mysql的数据备份
+	1.通过命令导出全部数据
+	mysqldump -u root -p --all-databases > /data/db.dump
+	
+	2.可以测试删除一些无关紧要的db，例如s14，test这样的数据
+	
+	
+	3.导入数据库的db文件，在mysql命令行中输入这个命令
+	mysql >    source /opt/db.dump   #这一步是输入的sql语句，在mysql中输入，导入数据
+	
+	4.第二种方式导入数据，通过mysql命令
+	mysql -uroot -p <  /opt/db.dump  
+	
+
+mysql主从复制的步骤：
+
+环境准备：
+准备两台服务器，安装两个mariadb
+
+主库是：192.168.12.96    mater
+从库是：192.168.12.87    slave  
+
+
+
+主库的操作如下：
+1.开启binlog功能，修改/etc/my.cnf 
+vim /etc/my.cnf #写入
+
+[mysqld]
+server-id=1   #指明主库的身份id为1
+log-bin=mysqls14-bin   #指明binlog的日志名
+
+2.修改了配置文件，重启mariadb，使得binlog生效
+systemctl restart mariadb  
+
+3.登录mysql，检查主库的状态
+show master status; 
+
+4.创建一个用户，用于进行主从同步
+create user 'kangchen'@'%' identified by 'kangchen666';
+
+5.授予账号权限，授予一个从库的身份权限
+grant replication slave on *.* to 'kangchen'@'%';
+
+6.锁定mysql的表，防止数据写入
+flush table with read lock;
+
+7.主从同步，将从库与主库的数据，保持一致后，它俩都在同一个起跑线，然后解除锁表，一同写入数据，保证数据一致性
+	1.导出当前的数据，用于slave机器导入数据，保证在一个起始点
+	mysqldump -u root -p --all-databases > /data/db.dump
+	2.将此db.dump文件远程传输给 slave机器，用于导入
+	scp /data/db.dump  root@192.168.12.87:/tmp/
+	3.登录slave从库，导入主库的数据信息
+	mysql >  source /tmp/db.dump 
+	4.查看主库和从库的信息，是否一致
+
+
+8.查看主库的状态信息,binlog信息
+show master status; 
+
+9.解锁表，开始主从同步
+unlock tables;
+
+
+
+从库的设置：
+
+1.在/etc/my.cnf当中打开server-id 
+vim /etc/my.cnf 
+
+2.重启myariadb
+
+3.查看slave机器的身份信息
+show variables like 'server_id';
+show variables like 'log_bin';
+
+4.通过命令，开启主从同步技术
+change master to master_host='192.168.12.96',
+master_user='kangchen',
+master_password='kangchen666',
+master_log_file='mysqls14-bin.000001',
+master_log_pos=671;
+
+5.开启slave 
+start slave;
+
+6.检查slave状态，检查两条参数，如果都是yes，即主从ok
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+
+			
+7.此时可以在主库中写入数据，查看从库中是否生成了记录
+
+主库：插入数据
+
+从库：检查数据
+
+
+
+
+
+
+
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+Mariadb 的sql:
+
+增
+create database  s14;
+create table s14tb(id int,name char);
+insert into s14tb (id ,name) values(1,"s14")
+
+
+删
+drop database s14;
+drop table s14tb;  #删除整张表
+delete from s14tb;
+
+
+
+
+改
+update 
+
+
+
+
+查
+	
+	
+select id,name,addr from table;
+	
+	
+	
+redis相关配置
+1.yum  源码 rpm  
+yum 快速，间接，高效，解决依赖关系，（自动安装到某个路径，不可控），通过yum安装的软件查询命令
+	rpm -ql nginx 
+	yum源的软件包可能版本非常低
+	
+源码安装，可扩展第三方的功能(可以指定目录安装, configure --prefix=/opt/python36/)
+	可以通过官网的最新代码，进行编译安装
+
+
+通过源码安装
+1.在线下载redis源码包
+wget http://download.redis.io/releases/redis-4.0.10.tar.gz
+2.解压缩redis源码包，如果源码包带有.gz结尾，需要通过gzip指令扩展，也就是-z的参数
+tar -zxvf redis-4.0.10.tar.gz  #解压缩这个文件，且显示解压缩过程
+3.切换目录到redis源码包
+cd redis-4.0.10
+4.由于redis没有configure脚本，直接就有了makefile，因此可以直接编译且安装
+make #编译
+make install #安装
+#此两条命令可以缩写为一条，  make && make install 
+5.编译安装完成后，redis默认会将redis命令添加到环境变量中/usr/local/bin底下
+6.启动redis服务端，自定义一个redis.conf 
+vim redis.conf ，写入以下内容(不要加上注释)
+	port 6379
+	daemonize no  #后台运行redis
+	pidfile /data/6379/redis.pid #将redis进程的id写入到redis.pid这个文件
+	loglevel notice  #日志级别
+	logfile "/data/6379/redis.log"
+	dir /data/6379  #配置redis数据存放点
+	protected-mode yes  #redis3.0之后的安全模式
+	requirepass qiangdademima  #给redis添加密码
+	
+	redis的安全模式，可能会阻挡你远程连接，为了解决这个安全模式，给redis设置一个密码
+	
+7.redis的多实例功能，可以在一个机器上，启动多个redis服务端
+	1.准备一个新的配置文件，redis默认支持多实例，再准备一个新的配置文件redis-6380.conf，内容如下：
+		port 6380
+		bind 0.0.0.0
+		daemonize yes
+		pidfile /data/6380/redis.pid 
+		loglevel notice 
+		logfile "/data/6380/redis.log"
+		dir /data/6380
+		protected-mode yes
+		requirepass zeiqiangdademima
+	2.启动第二个redis实例（第二个数据库）
+	redis-server  redis-6380.conf 
+		
+8.通过命令查询redis的密码参数
+CONFIG get requirepass
+
+
+
+redis发布订阅
+
+1.一个发布者，多个订阅者  
+2.支持正则的匹配订阅者
+
+
+-a	参数意思是指定redis的密码登录
+redis-cli -a qiangdademima   #启动1个redis客户端 (订阅者1)
+	SUBSCRIBE  频道名字   
+	PSUBSCRIBE  频道名*  
+
+redis-cli -a qiangdademima   #启动2个redis客户端(订阅者2)
+	SUBSCRIBE  频道名字 
+	PSUBSCRIBE  频道名*
+	
+redis-cli -a qiangdademima   #启动3个redis客户端(发布者)
+	PUBLISH   频道名字  想发送的消息   
+	PUBLISH   频道名字*   发送的消息
+	
+
+	
+redis持久化之rdb与aof
+
+rdb模式
+1.在配置文件中写入参数，支持rdb模式
+vim redis.conf 
+
+port 6379
+bind 0.0.0.0
+daemonize yes
+pidfile /data/6379/redis.pid 
+loglevel notice 
+logfile "/data/6379/redis.log"
+dir /data/6379 
+protected-mode yes
+requirepass qiangdademima
+dbfilename  dbmp.rdb
+save  900 1
+save 300 10
+save 60  10000
+
+2.启动redis服务端，此时可以设置redis的key，通过save命令触发rdb持久化
+
+
+
+aof模式
+
+1.vim redis.conf #写入以下 
+
+daemonize yes
+port 6379
+logfile /data/6379/redis.log
+dir /data/6379
+dbfilename  dbmp.rdb
+requirepass redhat
+save 900 1
+save 300 10
+save 60  10000
+appendonly yes
+appendfsync everysec
+
+2.启动redis-server服务端，默认就会生成appendonly.aof持久化文件
+此时进入redis-cli的操作，都会被记录，且追加到appendonly.aof文件中，以达到持久化的操作
+
+
+redis 持久化方式有哪些？有什么区别？
+
+rdb：基于快照的持久化，速度更快，一般用作备份，主从复制也是依赖于rdb持久化功能
+
+aof：以追加的方式记录redis操作日志的文件。可以最大程度的保证redis数据安全，类似于mysql的binlog
+
+
+
+
+	
+
+
+
+
