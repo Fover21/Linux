@@ -1,0 +1,215 @@
+day108Linux笔记
+
+
+web服务器软件
+IIS  (windows底下的web服务器软件)
+
+
+Nginx (Linux底下新一代高性能的web服务器)
+	 Tengine   www.taobao.com  这是淘宝 
+
+
+Apache  (Linnux上个时代的，老企业会选择apache)
+	http://www.gov.cn/
+
+
+Linux发起网络请求命令 curl
+
+
+公司的网站技术架构
+
+LAMP的一个技术栈
+linux   apache  mysql  php #搭建一个黄金组合，lamp
+
+闭源技术架构
+redhat + apache + oracle + java + nagios(监控服务器软件) + SVN(代码托管平台)
+走向开源
+centos + nginx +  mysql  + python + saltstack(运维软件，可以在一台机器上，管理多个机器)+ zabbix(监控软件) +   git()
+
+
+不同的python框架支持的QPS吞吐量是多少呢？ 通过ab这个命令，压测软件来测试一个不同(启动10个并发请求，发起10000个连接)，运行django，运行flask、运行tornado
+
+flask  600 req/s 
+django 1000..
+tornado(异步非阻塞)  2000...
+sanic (python3.7之后的一个异步框架。uvloop出)  ，3000...
+
+golang
+net/http     6W (很多互联网公司，知乎(py2 > golang)，滴滴都在python > golang )
+
+
+
+编译安装nginx：
+1.解决依赖关系
+yum install gcc patch libffi-devel python-devel  zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel db4-devel libpcap-devel xz-devel openssl openssl-devel -y
+2.下载源码包
+wget -c https://nginx.org/download/nginx-1.12.0.tar.gz
+3.解压缩源码包
+tar -zxvf nginx-1.12.0
+4.在当前路径下通过configure这个脚本文件执行，释放makefile，然后指定安装nginx的路径，以及开启模块功能ssl与状态模块功能
+./configure --prefix=/opt/nginx1-12/ --with-http_ssl_module --with-http_stub_status_module
+5.编译且编译安装
+make && make install 
+6.在/opt/nginx1-12/ 安装好nginx的目录，找到一个sbin的文件夹，找到nginx的启动命令，然后启动nginx服务
+	1.检查nginx安装后的目录，ll /opt/nginx1-12
+		drwxr-xr-x 2 root root 333 12月  6 09:32 conf  配置文件存放的目录,  nginx.conf这个文件就是nginx的主配置文件
+		drwxr-xr-x 2 root root  40 12月  6 09:32 html   存放网页根目录的文件夹，存放了index.html   **.html  **.gif **.jpg 
+		drwxr-xr-x 2 root root   6 12月  6 09:32 logs   日志目录
+		drwxr-xr-x 2 root root  19 12月  6 09:32 sbin   nginx启动脚本目录
+	2.nginx的可执行命令
+	- rwx(user) r-x(group) r-x(other) 1 root(属主) root(属组) 5656000 12月  6 09:32 sbin/nginx
+	  7         5           5 
+
+	
+./sbin/nginx  #直接启动nginx
+./sbin/nginx -s stop 
+./sbin/nginx -s reload  #平滑重启(修改了nginx配置文件，不重启服务就加载配置且生效)
+../sbin/nginx -t  检测nginx.conf 配置文件的语法正确性
+
+
+
+
+7.检查端口，进程，然后通过浏览器访问nginx页面，192.168.12.96:80
+
+8.nginx的主配置文件，nginx.conf修改
+
+ #虚拟主机1 
+    server {
+        listen       80;
+        server_name  www.s14huoying.com;  #这里是nginx通过这个参数，来定位不同的虚拟主机 
+        #代表访问nginx的匹配路径
+        location / {
+            #指明网页根目录在/data/huoying/文件夹下
+            root   /data/huoying/;  
+            index  index.html index.htm;
+        }
+
+#虚拟主机2
+server {
+        listen       81;
+        server_name  www.s14hanjutv.com;  #这里是nginx通过这个参数，来定位不同的虚拟主机 
+        #代表访问nginx的匹配路径
+        location / {
+            #指明网页根目录在/opt/html/文件夹下
+            root   /data/hanju/;
+            index  index.html index.htm;
+        }
+
+
+#一台服务器，安装了一个web服务软件
+
+#假设我超弟想创业，准备2个网站，展示不同的片
+
+#资源浪费，一个服务器至少也是50G的磁盘，浪费钱
+
+一个服务器，安装一个web软件，展示一个页面
+
+
+再主板一个服务器，再安装一个web软件，展示一个页面
+
+
+
+
+卖片，火影忍者     www.s14huoying.com  展示不同的网站资料，mp4，图片，动态图，html静态资源，超链接
+  
+
+卖片，韩剧TV       www.s14hanjutv.com  展示不同的网站资料，mp4，图片，动态图，html静态资源，超链接
+
+nginx多虚拟主机，在一台机器上，安装一个nginx，运行多个虚拟主机,不同的虚拟主机，返回不同的页面
+
+#多虚拟主机的配置
+1.修改nginx底下的conf/nginx.conf ，修改信息如下
+		server {
+			listen       80;
+			server_name  www.s14huoying.com;
+			location / {
+				#指明网页根目录在/opt/html/文件夹下
+				root   /data/huoying;
+				index  index.html index.htm;
+			}
+			}
+		server {
+			listen       80;
+			server_name  www.s14hanju.com;
+			location / {
+				#指明网页根目录在/opt/html/文件夹下
+				root   /data/hanju;
+				index  index.html index.htm;
+			}
+			}
+2.重新加载nginx配置文件
+../sbin/nginx -t  #检测语法
+../sbin/nginx -s reload #平滑重启 
+
+3.准备不同的虚拟主机的站点资料
+mkdir -p /data/{huoying,hanju}
+放入不同的资料如下
+├── hanju
+│   ├── hanju.jpg
+│   └── index.html
+└── huoying
+    ├── index.html
+    └── mingren.jpg
+	
+4.写入到本地dns解析文件，由于我是在windows中通过浏览器访问，应该在windows的hosts文件中添加记录
+hosts文件就是一个本地dns(就是将域名转化成ip地址)强制解析的文件
+
+windows的hosts文件就在这里：C:\Windows\System32\drivers\etc\hosts ，写入如下信息
+
+
+192.168.12.96   www.s14huoying.com
+192.168.12.96   www.s14hanju.com
+
+5.在windows中，测试访问多域名配置
+
+
+
+nginx状态模块功能：
+1.在配置文件中，添加一个参数即可
+        location /status {
+        stub_status on;
+}
+
+
+nginx访问日志功能：
+1.在配置文件中，打开注释，nginx.conf 
+
+
+   log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  logs/access.log  main;
+	
+参数详解：
+$remote_addr    记录客户端ip
+$remote_user    远程用户，没有就是 “-”
+$time_local 　　 对应[14/Aug/2018:18:46:52 +0800]
+$request　　　 　对应请求信息"GET /favicon.ico HTTP/1.1"
+$status　　　  　状态码
+$body_bytes_sent　　571字节 请求体的大小
+$http_referer　　对应“-”　　由于是直接输入浏览器就是 -
+$http_user_agent　　客户端身份信息
+$http_x_forwarded_for　　记录客户端的来源真实ip 97.64.34.118
+
+
+打开了功能之后，可一通过access_log查看用户身份信息
+192.168.12.60 - - [06/Dec/2018:11:24:04 +0800] "GET / HTTP/1.1" 304 0 "-" "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36" "-"
+
+
+nginx的错误页面优化：
+1.在配置文件中添加  nginx.conf 
+	server {
+			listen       80;
+			server_name  www.s14huoying.com;
+			location / {
+				#指明网页根目录在/opt/html/文件夹下
+				root   /data/huoying;
+				index  index.html index.htm;
+				deny 192.168.12.120;
+			}
+			error_page  400 401 402 404   /40x.html;
+			#当请求来自于wwww.s14huoying.com/status/
+	}
+
+

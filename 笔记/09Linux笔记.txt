@@ -1,0 +1,407 @@
+day109Linux笔记
+web知识博客：https://www.cnblogs.com/pyyu/p/9467256.html
+nginx博客：https://www.cnblogs.com/pyyu/p/9468680.html
+nginx负载均衡博客：https://www.cnblogs.com/pyyu/p/10004633.html
+
+
+昨日内容回顾：
+nginx安装配置
+nginx目录下的sbin文件夹nginx绿色的执行文件
+nginx底下的conf文件夹nginx.conf是主配置文件
+nginx.conf通过闭合的大括号，来确定代码作用域
+server{}标签定义虚拟主机
+server{
+ listen 80;
+ server_name  域名或者ip地址;   www.s14.com 
+ #网站访问的路径匹配
+ 
+ #  www.s14.com/s14.png 
+ #  www.s14.com/index.html 
+ 
+ 
+ location / {
+	#root参数定义，这个虚拟主机访问入口时，定位的资源文件放在哪 
+	#用于定义虚拟主机，网站根目录
+	root    /data/static/;   #如果我在这放了一个图片 /data/static/s14.png 	
+	index   index.html #定义默认的首页文件名叫做/data/static/index.html  
+ }
+
+
+}多个标签，定义多个虚拟主机
+
+
+#错误页面的定义 这个/40x.html，代表必须在root定义的网页根目录下，存在/data/static/40x.html，如果没有文件则touch 40x.html
+# www.s14.com/weqwewqe12312312312
+errror_page  状态码 400 401 404  /40x.html 
+
+#访问日志，打开配置文件的注释即可
+
+
+
+#web服务基础知识
+c/s 客户端/服务器
+b/s 浏览器/服务器
+
+nginx   >   web  server  服务端
+浏览器  >    web  client  客户端
+
+
+#dns解析流程 
+
+1.首先用户输入一段url，在浏览器  www.oldboyedu.com 
+2.(dns解析的第一步)浏览器会首先在你的机器上，寻找一个hosts文件,这是本地测试dns解析文件
+2.（第二步）如果hosts文件未指定解析记录，浏览器就去机器的dns缓存中寻找解析记录  LDNS（local dns缓存）
+3.（第三步）如果缓存也没有记录，去指定的dns服务器中(手动配置，linux底下/etc/reslove.)，去网络中寻找解析记录
+/etc/resolv.conf
+写入两条dns记录
+主dns服务器  nameserver  x.x.x.x
+备dns服务器  nameserver  x.x.x.x 
+
+linux解析dns的命令
+nslookup(nameserver lookup  域名服务器查找 )
+
+4.dns服务器会将查找到的ip和域名对应的记录，返回给浏览器，浏览器就知道访问的ip服务器是谁了
+5.此时操作系统会将这条解析记录，写入到本地dns缓存中，LDNS
+
+
+#状态码
+300系列就是  你访问的url经过重定向redirect，  baidu.com   >  diaoyu.baidu.com 
+
+ 
+ 
+nginx location语法：
+
+location支持的语法优先级：
+
+复制代码
+location匹配顺序
+
+#  www.s14hanju.com/
+1.location = / {
+  我是代码1
+} 精确匹配
+
+
+# www.s14hanju.com/images/
+2.location ^~ /images/ {
+我是代码2
+}  匹配常规串，不做正则检查
+
+
+#  www.s14hanju.com/xxx.gif  
+#www.s14hanju.com/xxx.jpg 
+#www.s14hanju.com/xxx.gif
+#www.s14hanju.com/xxx.jpeg
+
+3.location ~* \.(gif|jpg|jpeg) {
+我是代码3
+} 正则匹配
+
+
+#优先级为4，  www.s14hanju.com/av/xx资源
+4. location /av/ {
+我是代码4
+}  匹配常规字符，有正则优先正则
+
+
+
+#如果你谁都没匹配到的话，默认走/，走网页根目录，优先级最低
+
+5.location / {
+我是代码5
+}  所有的location都不匹配后，默认匹配
+
+
+
+#location语法实战
+
+
+##最低优先级5 ，谁都找不到的时候，匹配 
+
+#最低匹配度，谁都找不到匹配
+
+www.s14hanju.com/hello
+www.s14hanju.com/reg
+www.s14hanju.com/login
+#我的请求发给nginx的时候，nginx不做处理，直接返回给django
+location / {
+ uwsgi_pass http:0.0.0.0:8000;
+}
+
+
+
+
+#通过 =   精确匹配，优先级1
+location =/  {
+return 402;
+}
+#通过常规字符匹配，匹配/documents/  优先级4
+location /documents/ {
+return 403;
+}
+#匹配常规字符，且不做正则，优先级为2
+location ^~ /images/ {
+return 404;
+}
+#匹配资源请求是图片等的话，优先级为3
+
+#如果你想请求图片资源，就直接丢给nginx去做处理
+#nginx处理静态资源更为优秀
+
+#alias 给location配置一个文件工作目录
+location ~* \.(gif|jpg|jpeg|mp4)$ {
+ alias    /data/static/ 
+}
+}
+
+#动静分离的效果，动态请求直接location匹配，转发给django
+#静态资源请求，解析到转发给nginx直接处理
+
+
+
+#正向代理
+#代理的是客户端
+
+
+#反向代理
+#代理的是服务端
+
+
+#nginx的反向代理功能就是 proxy_pass参数
+1.配置方式，准备2台机器
+在机器1中，添加参数
+server {
+       listen 80;
+		  server_name  www.s14huoying.com;
+		  location / {
+		  proxy_pass http://192.168.12.38;  #请求会直接转发给node2节点，也就是http://192.168.12.38; 
+}
+
+2.在两台机器上，检测access.log ，查看请求来源
+
+710144 GB  = 710TB
+
+
+1024KB    1MB
+
+1024MB  1GB
+
+1024GB  1TB
+  
+xshell的快捷用法：
+找到查看 >  撰写  >撰写栏
+
+
+  
+  
+nginx负载均衡配置
+1.环境准备，准备3台服务器
+192.168.12.96   nginx入口node1
+192.168.12.67   康琛的应用服务器
+192.168.12.38   伟华的应用服务器
+
+2.关闭所有机器的防火墙
+
+
+3.在node1节点上配置负载均衡配置（发牌人）
+	1.修改配置文件nginx.conf ，写入如下配置
+			#定义负载均衡池名字叫做s14django
+			upstream s14django {   
+				#池子中存放2个服务器，默认轮训方式调度服务器
+				server 192.168.12.38:8000; 
+				server 192.168.12.67:8000;
+		    }
+			#root参数定义网页的根目录，可以写在虚拟主机内，局部变量
+			#如果写在server标签外，就是全局变量
+			root html;
+			#虚拟主机1
+			server {
+			   listen 80;
+			   server_name  www.s14huoying.com;
+			  location / {
+			  
+			  #当请求发送到www.s14huoying.com的时候，匹配到 /  ，就执行以下代码
+			  proxy_pass http://s14django;
+			  #包含语法参数，将一个配置文件添加到当前虚拟主机生效，这个文件要手动创建
+			  #这个proxy_params文件创建在/opt/nginx1-12/conf底下
+			  include proxy_params;
+		}
+		}
+    2.手动创建这个参数文件
+	touch /opt/nginx1-12/conf/proxy_params
+	写入信息
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+		proxy_connect_timeout 30;
+		proxy_send_timeout 60;
+		proxy_read_timeout 60;
+
+		proxy_buffering on;
+		proxy_buffer_size 32k;
+		proxy_buffers 4 128k;
+
+
+4.配置weihua的应用服务器
+	1.准备一个flask代码，运行  
+	pip3 install flask
+	2.准备代码  myflask.py 
+		from flask import Flask
+		app=Flask(__name__)
+		@app.route('/')
+		def hello():
+		return "<h1>我是伟华</h1>"
+		if __name__=="__main__":
+		app.run(host='0.0.0.0',port=8000)
+	3.启动应用服务器
+	python3 myflask.py 
+	
+
+5.配置chenchen的应用服务器
+	1.准备一个flask代码，运行  
+	pip3 install flask
+	2.准备代码  myflask.py 
+		from flask import Flask
+		app=Flask(__name__)
+		@app.route('/')
+		def hello():
+		return "<h1>我是琛琛</h1>"
+		if __name__=="__main__":
+		app.run(host='0.0.0.0',port=8000)
+	3.启动应用服务器
+	python3 myflask.py 
+
+
+6.通过访问nginx负载均衡器入口，查看负载均衡 是否正常分配，默认是轮训方式
+	1.访问自己的nginx负载均衡的ip地址，查看结果
+
+
+redis持久化
+RDB
+基于快照的持久化
+通过save命令，强制持久化  
+在redis.conf中
+dbfilename  dbmp.rdb
+save  900 1
+save 300 10
+save 60  10000
+
+
+
+
+AOF
+将修改命令，全部收集写入到一个aof文件中
+appendonly yes
+appendfsync  everysec   #每秒钟记录一次变化
+
+
+
+RDB数据切换AOF数据的操作
+1.准备redis.conf配置文件，确保开启rdb功能,配置参数如下
+
+	port 6379
+	daemonize yes
+	pidfile /data/redis.pid 
+	loglevel notice 
+	logfile "/data/redis.log"
+	dir /data/
+	dbfilename  dbmp.rdb
+	save  900 1
+	save 300 10
+	save 60  10000
+2.启动redis服务端
+	redis-server redis.conf 
+3.插入redis数据，通过save命令，强制写入持久化rdb文件(此时还是使用rdb持久化)
+	set name shahe 
+	set age 11
+	save  
+	
+4.通过命令，切换到aof持久化，（注意此步只是临时生效，必须将AOF的配置，写入redis.conf）
+127.0.0.1:6379> CONFIG set appendonly yes   #开启AOF功能
+OK
+127.0.0.1:6379> CONFIG SET save ""  #关闭RDB功能
+OK
+
+5.修改配置文件，添加aof参数，(此步重启后，rdb持久化完全切换aof持久化，且数据保持一致)
+
+port 6379
+daemonize yes
+pidfile /data/redis.pid 
+loglevel notice 
+logfile "/data/redis.log"
+dir /data/
+appendonly yes
+appendfsync  everysec 
+
+6.重启redis服务
+
+
+
+redis主从复制：
+1.环境准备3个redis实例
+redis-6380.conf
+redis-6381.conf
+redis-6382.conf
+				三个配置文件的区别，仅仅是端口的不同修改即可
+port 6380
+daemonize yes
+pidfile /data/6380/redis.pid
+loglevel notice
+logfile "/data/6380/redis.log"
+dbfilename dump.rdb
+dir /data/6380
+protected-mode no
+
+2.启动三个redis实例
+redis-server 6380.conf 
+redis-server 6381.conf 
+redis-server 6382.conf
+
+3.此时可以查看redis身份信息，通过info参数()此时还未配置主从，因此都是master身份
+redis-cli -p 6382 info Replication
+redis-cli -p 6381 info Replication
+redis-cli -p 6380 info Replication
+
+4.配置从节点的身份(6380为主，6381,6382为从)，通过命令指明master节点信息即可
+127.0.0.1:6381> SLAVEOF 127.0.0.1 6380 
+
+127.0.0.1:6382> SLAVEOF 127.0.0.1 6380 
+
+5.查看各个各个节点的身份信息
+redis-cli -p 6382 info Replication		从节点
+redis-cli -p 6381 info Replication    从节点
+redis-cli -p 6380 info Replication  ()主节点
+
+
+
+#手动切换主从身份
+1.将主节点挂掉
+kill -9 主节点 6380
+
+2.将6382去掉slave的身份
+redis-cli -p 6382 slaveof no one 
+
+3.将6381设置新的主人，设置为6382
+redis-cli -p 6381 slaveof 127.0.0.1 6382 
+
+
+
+#通过配置文件，决定主从身份
+1.在配置文件中，添加一条参数即可(主节点不做配置，从节点指明主人的ip端口信息即可)
+port 6380
+daemonize yes
+pidfile /data/6380/redis.pid
+loglevel notice
+logfile "/data/6380/redis.log"
+dbfilename dump.rdb
+dir /data/6380
+protected-mode no
+slaveof 127.0.0.1 6381
+
+
+
+
+
+
+
