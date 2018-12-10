@@ -1,0 +1,363 @@
+今日内容：
+博客地址：
+https://www.cnblogs.com/pyyu/p/9481344.html
+
+
+linux基本管理命令
+
+服务器上安装服务,python3.6(宿主机上的物理解释器)
+1.虚拟解释器
+virtualenv
+虚拟出多个干净、隔离的python解释器环境
+问题：管理上较为麻烦，需要找到venv的路径，并且source activate 才能激活虚拟环境
+2.
+virtualenvwrapper工具
+更为方便的使用以及管理virtualenv
+1.配置好环境变量之后，每次开机就加载这个软件
+2.workon 激活并且切换多个虚拟环境
+mkvirtualenv  创建
+lsvirtualenv
+cdvirtualenv
+rmvirtualenv
+
+
+
+mariadb(mysql)，与django连接，存储数据(yum install mariadb-server mariadb-client)
+初始化连接数据库
+	__init.py__
+	import pymysql 
+	pymysql.install()
+本地django连接linux上的数据库注意事项：
+1.防火墙问题，需配置规则，或者关闭防火墙
+	使用云服务器的同学，需要注意开通3306端口（安全组功能）
+2.远程连接mysql，需要授权，远程连接
+grant all privileges .....
+
+redis
+import redis 
+
+
+
+准备django项目 >  crm 在服务器上运行crm
+1.把本地代码，传至linux
+	-scp(linux与linux网络传输)
+	-xshell(yum install  lrzsz)  (windows)
+				lrzsz  可以通过如下俩命令管理文件，也可以直接拖拽文件
+				rz   接收
+				sz   发送
+		lrzsz只适用于小文件，大文件，请用xftp
+	-xftp (更为高效的企业级文件传输协议软件)
+2.django项目需要配置allow_hosts=['*']，允许所有主机访问
+debug=True  #返回给项目一个debug信息，暴露了项目配置信息，因此在线上要关闭
+
+
+
+Nginx
+1.web服务器，用户的统一入口， 
+我们的想法是，让用户通过nginx这个入口，就能访问到我们的应用服务器的功能
+www.pythonav.cn     入口   <   80端口
+端口转发，反向代理  
+80端口的请求  >   8000的端口应用
+
+server{}虚拟主机
+
+
+
+2.反向代理服务器
+	proxy_pass  后端应用服务器的ip:port   (转发给一个单点机器)
+	proxy_pass  upstream负载均衡池
+	
+3.负载均衡服务器
+	nginx接收到了基于wsgi协议的动态请求，然后通过uwsgi_pass转发给uwsgi服务器
+	
+	uwsgi_pass  mydjango;
+
+	upstream mydjango {
+		server 192.168.12.1:8000 weight=1;
+		server 192.168.12.2:8000 weight=5;
+		server 192.168.12.3:8000 weight=10;
+	}
+	
+4.处理静态文件，者是nginx的天然优势，处理静态文件的高并发性性能
+
+www.pythonav.com/static/xxx.js
+	文件存放目录/data/static/xxx.js
+www.pythonav.com/static/xxx.css
+	文件存放目录/data/static/xxx.css 
+www.pythonav.com/static/xxx.jpg
+	文件存放目录/data/static/xxx.jpg
+
+	
+location /static  {
+	alias /data/static;
+}
+
+
+
+uwsgi 
+	uwsgi服务器：
+	通过uwsgi这个软件启动crm项目，且是一个支持高并发，多进程的一个应用服务器
+	uwsgi --module  crm 
+	
+	python3 manage.py runserver 0.0.0.0:8000  ××  不再用这种单机形式启动crm
+	django-admin startproject   crm
+	django-admin startapp      app01
+		crm 
+			-crm
+				-wsgi.py   (重点级的文件，django启动，实现wsgi协议的文件)
+			-manage.py
+
+常见问题：
+uwsgi  启动crm的时候，非常有可能报错一个 no application(找不到应用)
+uwsgi找不到你的crm的wsgi.py
+	其实uwsgi是通过这个application对象加载crm的
+	application = get_wsgi_application()
+
+
+
+
+
+			
+			
+进程管理工具：
+启动进程后，通过命令 手动管理 
+ps -ef |grep uwsgi 
+#启停uwsgi 
+kill -9 pid 
+pkill uwsgi 
+killall uwsgi 
+
+
+#管理nginx 
+
+ps -ef 
+kill 
+
+#管理mysql
+ps -ef 
+
+kill 
+
+
+#进程管理工具 
+supervisor 服务启动后
+
+
+supervisorctl ，可以通过这个命令，非常方便的管理进程，也可以统一启动，停止所有的进程
+	批量管理进程
+	mysql : running/stop 
+	nginx :	 running/stop
+	uwsgi:running/stop
+
+	
+	
+
+
+ 项目发布配置手册：
+ (更换不同的服务器环境，首先就要解决环境依赖的问题)
+ 1.pip3 frezz > requirements.py 
+ 2. pip3 install -r requirements.py 
+ 
+ 3.docker 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 1.准备python环境，准备虚拟环境，激活了虚拟环境
+ mkvirtualenv nbcrm
+	检测是否虚拟环境正常
+	which pip3 
+	which python3 
+	
+2.安装django模块（此时的操作都是在nbcrm这个虚拟环境下了）
+pip3 install django==1.11.11
+
+3.安装pymysql连接mysql数据库
+pip3 install pymysql
+
+4.安装django的一个django-multiselectfield
+
+pip3 install django-multiselectfield
+
+5.解决项目的数据库连接问题，修改settings.py 
+	1.启动linux的数据库，创建对应的数据库，密码设置等等
+	create database nb_crm;  
+	2.更改settings.py 
+	DATABASES = {
+			'default': {
+				'ENGINE': 'django.db.backends.mysql',
+				'NAME': 'nb_crm', #数据库名
+				'HOST': '127.0.0.1',  #这里服务器的ip地址
+				'PORT': 3306,	#端口
+				'USER': 'root',	#用户名 
+				'PASSWORD': 'redhat123',   #用户密码
+			}
+		}
+	3.更改允许主机
+	ALLOWED_HOSTS = ['*']
+
+	4.线上关闭debug(肖锋的这个nb_crm先别改debug了)，默认先用True
+	debug=True 
+	
+
+使用uwsgi启动django
+1.安装uwsgi
+pip3 install -i https://pypi.douban.com/simple uwsgi
+
+2.通过uwsgi命令启动python应用
+uwsgi --http   0.0.0.0:8888  --wsgi-file test1.py  
+	--http  指明是http协议
+	--socket 启动一个socket 链接
+	--wsgi-file  指明一个python应用文件
+	
+3.通过uwsgi启动django项目(问题是，uwsgi不处理static静态文件的配置)
+uwsgi --http :8888  --module Nb_crm.wsgi    
+
+4.uwsgi可以热加载项目
+uwsgi --http :9999  --module mycrm.wsgi --py-autoreload=1 
+--py-autoreload是告诉uwsgi自动重启加载django项目
+
+5.通过uwsgi的配置文件启动项目
+	1.手动创建uwsgi.ini文件
+	touch uwsgi.ini
+	2.写入如下配置
+	[uwsgi]
+		#项目的绝对路径，定位到项目的第一层
+		chdir           = /opt/NB_crm
+		#指明项目的wsgi文件路径
+		module          = NB_crm.wsgi
+		#指明你的虚拟解释器的第一层路径
+		home            = /root/Envs/nbcrm
+		#指明通过uwsgi，启动多少个进程
+		processes       = 5
+
+		#非常重要
+		#非常重要
+		#非常重要
+		#如果你已经配置了nginx(启动了nginx服务，配置了uwsgi_pass)，请用这个socket连接
+		#socket          = 0.0.0.0:8000
+
+		#如果你没用nginx，想通过uwsgi直接启动web服务，指明http协议
+		http = 0.0.0.0:9999
+
+		#在退出uwsgi环境后，清空环境变量
+		vacuum          = true
+
+
+6.通过配置文件启动NB_crm（注意uwsgi不会处理静态文件，如果有，也是浏览器的缓存！！！！）
+uwsgi --ini  uwsgi.ini 
+
+
+7.配置django的settings.py，收集所有NB_crm项目所需的静态文件
+	1.#通过命令，收集整个项目所有的静态文件，放入到/opt/static/
+		STATIC_ROOT='/opt/static/'
+	2.执行命令
+		python3 manage.py collectstatic
+	3.此时NB_crm的所有静态文件，都跑到/opt/static/底下了
+		(nbcrm) [root@node1 /opt/NB_crm 11:09:33]#ls /opt/static/
+		admin  css  imgs  js  plugins
+
+	
+8.配置nginx
+	1.配置一个网站入口，当用户访问192.168.12.96:80 这个web应用时，自动将请求转发给uwsgi，uwsgi处理后，返回给nginx，返回给用户
+	当请求是192.168.12.96:80的时候，其实访问的是192.168.12.96:9999  这是动态请求，因为我是找到的uwsgi
+	#匹配度最低的写法，因此就是任何的请求都访问到这里
+	
+	2.通过nginx去处理静态文件 
+
+
+	3.nginx.conf配置如下
+	
+	#定义负载均衡池，里面放入uwsgi的地址
+    upstream nbcrm {
+		server 127.0.0.1:8000;
+}
+
+    server {
+       listen 80;
+       server_name  www.s14huoying.com;
+	   #讲nginx入口的请求，直接反向代理给uwsgi
+       location / {
+         uwsgi_pass  nbcrm;
+         include /opt/nginx1-12/conf/uwsgi_params;
+}
+	#通过nginx处理nbcrm的静态文件
+	location /static {
+		alias /opt/static/;
+		}
+	}
+
+9.更改uwsgi.ini ，指明socket连接，结合uwsgi 和nginx
+	#如果你已经配置了nginx，请用这个socket连接
+	socket          = 0.0.0.0:8000
+
+
+10.启动uwsgi.ini 
+uwsgi --ini uwsgi.ini 
+
+启动nginx
+
+./nginx 
+
+
+并且访问nginx的域名入口，查看是否能访问到uwsgi项目，并且静态文件是否正常
+
+www.s14huoying.com   查看浏览器状态
+
+
+
+11.配置supversior，管理uwsgi进程
+
+注意，请退出虚拟环境，在宿主机环境下，安装supvervisor
+
+1.安装easy_install ，python2的软件包管理工具 ，如果有了可以忽略
+	yum install python-setuptools
+
+	#安装软件
+	easy_install supervisor
+
+
+2.使用supervisor命令,常用命令如下
+	生成配置文件
+	echo_supervisord_conf >  /etc/supervisord.conf
+
+	
+3.修改配置文件，添加任务，按照自己的机器环境修改此命令
+[program:s14nbcrm]
+#启动uwsgi的命令就是这个
+command=/root/Envs/nbcrm/bin/uwsgi  --ini /opt/NB_crm/uwsgi.ini
+#自动启动uwsgi，挂了之后自动加载
+autorestart=true
+
+	
+4.启动supvervisord服务，启动uwsgi	
+	#服务端命令，用于启动这个服务
+	supervisord -c  /etc/supervisord.conf
+
+
+5.通过命令管理uwsgi
+	supervisorctl 直接回车，进入交互式管理状态
+
+	[root@node1 ~ 11:53:32]#supervisorctl 
+	s14nbcrm                         RUNNING   pid 2008, uptime 0:01:56
+
+也可以通过命令交互式的管理uwsgi
+	#服务端启动后，通过命令管理软件
+
+	supervisorctl  start s14nbcrm
+	supervisorctl  stop  s14nbcrm 
+	supervisorctl status s14nbcrm
+	
+	
+	
+
+
+
+
+
+
+
