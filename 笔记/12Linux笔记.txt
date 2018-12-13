@@ -1,0 +1,369 @@
+day112Linux笔记
+
+昨日内容回顾：
+
+1.redis主从同步
+可以主从数据同步，从库只读，只能手动切换主备关系
+2.redis哨兵
+	-准备redis主从数据库环境
+	-准备redis哨兵(可以有一个，可以有多个)
+	-哨兵检测redis主库状态，主库挂了的话，找一个从库顶替
+3.redis-cluster(redis3.0之后，官方提供的集群方案)
+	-主从+哨兵 
+	-codis(redis集群方案，豆瓣的开发，开源的软件)
+
+1.docker介绍
+docker是linux容器方案
+docker可以很大的解决环境依赖问题
+
+virtualenv是什么？
+python解释器的虚拟环境，和操作系统无关
+在机器上可以配置多个python解释器
+
+docker环境依赖解决问题：
+1.在物理操作系统上的一个环境隔离（虚拟环境）
+
+docker使用命令回顾：
+镜像
+docker image ls
+docker images
+docker pull 镜像名  	#docker仓库，dockerhub
+docker push 镜像名    #把本地的镜像推送到 dockerhub仓库
+docker search 镜像名
+docker rmi  删除镜像
+docker version #查看docker版本，查看到server 和client两个端
+systemctl start docker   #启动docker
+docker save  镜像名  >  /data/centos.tar.gz  #导出镜像
+docker load  <  /data/centos.tar.gz  #导入镜像    
+docker run  镜像名  #运行镜像文件，产生一个容器实例
+
+
+容器
+docker start 容器id 
+docker stop 容器id
+docker exec -it   容器id #进入正在运行的容器
+	-i 交互式操作
+	-t  开启一个终端
+
+docker run 镜像名 #创建容器实例
+docker rm  容器id  #删除容器记录，必须提前docker stop 容器id ，只能杀死已经停止的容器
+docker ps  #查看容器正在运行记录
+docker ps -aq  #显示所有容器记录的id号
+	-a  显示所有容器记录
+	-q	 显示容器id
+	
+docker rm  `docker ps -aq`  #一次性删除所有容器记录
+
+docker container ls  #查看容器正在运行记录
+docker commit  容器id记录  #提交这个容器，创建一个新的镜像
+docker logs  #查看容器运行日志 
+	-f   #不间断打印容器日志
+	
+docker port   #查看容器的端口映射关系(外部访问到容器内的端口)
+docker run -d  centos  -P  
+-d 后台运行
+-P   随机映射端口  
+-p  9000(宿主机):5000(容器内) 
+--name   给创建的容器记录，添加别名
+
+
+仓库
+
+
+
+
+1.docker pull 
+
+2.docker run    #如果没有这个镜像，直接docker run 它也会内部去下载这个镜像
+
+
+
+
+#脚本的概念就是，将你想做的事，写入到一个文件中，然后执行这个文件，就是执行一个脚本
+
+
+
+#假如我想定制一个自己的 docker镜像 
+#首先得有一个基础操作系统镜像
+#FROM centos  #基于这个centos的镜像，然后定制我自己的镜像
+#底下通过docker提供的指令，添加，自定制自己的规则，然后创建自己的镜像文件
+#FROM centos  #基于这个centos的镜像，然后定制我自己的镜像
+#RUN yum install vim -y 
+#RUN yum install nginx -y  
+
+
+#仅仅只有这3句的dockerfile，就能定制一个拥有nginx和vim的centos镜像文件
+
+#此时我构建出的这个centos-vim-nginx镜像文件，就可以传给14期的所有同学用
+
+
+#咱们14期的同学，就可以 docker load 或者docker pull 这个镜像，docker run centos-vim-nginx
+
+
+
+FROM scratch #制作base image 基础镜像，尽量使用官方的image作为base image
+
+
+FROM centos #使用base image
+
+FROM ubuntu:14.04 #带有tag的base image
+
+
+#相当于代码注释，告诉别人，你的镜像文件的信息是什么
+LABEL version=“1.0” #容器元信息，帮助信息，Metadata，类似于代码注释
+#定义一个dockerfile的作者信息
+LABEL maintainer="wupeiqidsb"
+
+
+#开始定制自己的镜像需求
+#对于复杂的RUN命令，避免无用的分层，多条命令用反斜线换行，合成一条命令！
+RUN yum update && yum install -y vim \
+    Python-dev #反斜线换行
+#RUN指令，相当于在centos中执行了一堆命令
+RUN hostnamectl set-hostname mydocker
+RUN yum install redis -y 
+	
+#写上3条就会执行者3条
+
+
+WORKDIR /root 					#相当于linux的cd命令，改变目录，尽量使用绝对路径！！！不要用RUN cd
+WORKDIR /test						 #如果没有就自动创建
+WORKDIR demo						 #再进入demo文件夹
+WORKDIR s14
+WORKDIR /opt 
+
+RUN pwd      /opt 
+
+
+#ADD和COPY
+#宿主机linux有自己的磁盘，文件夹
+#容器空间 也有自己的文件夹
+
+#我们使用docker一定是想将宿主机的文件，添加到容器中
+
+#ADD就是添加宿主机的文件，到容器当中
+#ADD还有一个解压缩的功能
+
+# /opt 
+ADD and COPY 
+#把宿主机的hello文件，放入到容器的 / 根目录下
+# 这个hello文件的相对路径，是以Dockerfile文件所在目录为相对路径
+
+ADD hello /  #把本地文件添加到镜像中，吧本地的hello可执行文件拷贝到镜像的/目录
+
+#把与dockerfile同级的一个test.tar.gz压缩文件，拷贝添加到容器的 根 / 目录中，并且解压缩
+#  远程传输 并且  tar -zxvf  
+ADD test.tar.gz /  #添加到根目录并解压  
+ 
+
+WORKDIR /root  #切换工作目录到 /root 
+
+#把dockerfile同级的那个hello文件 拷贝到容器的/root/test/hello 
+
+ADD hello test/ #进入/root/ 添加hello可执行命令到test目录下，也就是/root/test/hello 一个绝对路径
+
+COPY hello test/  #等同于上述ADD效果
+
+
+
+ADD与COPY
+    -ADD除了COPY功能还有解压功能
+	
+添加远程文件/目录使用curl或wget
+
+
+
+ENV #环境变量，尽可能使用ENV增加可维护性
+ENV MYSQL_VERSION 5.6 #设置一个mysql常量
+RUN yum install -y mysql-server=“${MYSQL_VERSION}” 
+
+
+RUN ./cofigure  --prefix=/opt/
+RUN  make&& make install 
+
+
+
+
+#dockerfile实验
+
+1.准备一个flask代码，准备python代码
+	from flask import Flask
+	app=Flask(__name__)
+	@app.route('/')
+	def hello():
+		return "hello docker,i am  sbwueiqi, i am in s14 "
+	if __name__=="__main__":
+		app.run(host='0.0.0.0',port=8080)
+		
+2.准备Dockerfile，准备好所有需要的文件
+[root@node1 /data/mydocker 10:33:53]#ls
+CentOS-Base.repo  Dockerfile  epel.repo  myflask.p
+
+cat Dockerfile
+	FROM centos        
+	LABEL maintainer="Chao Yu<yc_uuu@163.com>"
+	ADD CentOS-Base.repo /etc/yum.repos.d/
+	ADD epel.repo /etc/yum.repos.d/
+	RUN yum clean all
+	RUN yum install python-pip -y
+	RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple flask
+	COPY myflask.py /app/
+	WORKDIR /app
+	EXPOSE 8080
+	CMD ["python","myflask.py"]
+	1.引入一个centos镜像，为基础镜像
+	2.作者注释信息
+	3.添加本地的两个yum文件，到容器的/etc/yum.repos.d/底下
+	4.清空yum缓存
+	5.yum安装pip工具
+	6.pip安装flask模块，指定清华源
+	7.拷贝本地的flask代码，到容器的/app/目录下
+	8.切换工作目录，到/app底下
+	9.暴露容器的8080端口，然后在运行镜像时候，加上-p参数，指定端口映射
+	10.执行命令，运行flask
+	
+
+3.构建docker镜像文件
+docker build -t yuchao163/s14-flask-docker       .
+#构建当前目录的Dcokerfile，然后构建出一个名为yuchao163/s14-flask-docker 这个的镜像文件
+-t  tag参数，给镜像加上标记名
+dockerhub账户名：yuchao163
+
+dockerhub账户名/镜像名   #是为了后面讲docker镜像，推送到dockerhub
+
+4.查看镜像是否构建完成
+docker images 
+
+5.运行这个镜像文件，产生容器实例
+
+docker run -p 9000:8080   -d 43d
+-p  映射9000端口到容器的8080
+-d 后台运行 
+43d  镜像id
+
+6.查看已经运行的docker实例
+
+docker ps 
+
+7.学习dockerhub，发布自己的docker镜像
+	1.我可以先下载其他人的docker镜像
+	
+	docker pull yuchao163/hello-world-docker
+	
+	2.上传自己的docker镜像 
+		docker login  #登录自己的docker hub账号 ，输入密码 
+		#docker就会有你自己的dockerhub账号信息  yuchao163
+		
+	3.更改docker镜像的名字，也就是加上一个tag标记
+		docker tag s14/centos-vim  yuchao163/s14-centos-vim
+		docker tag  现有镜像名字     dockerhub账户名/新的镜像名
+	4.登录后可以推送镜像文件，此时推送给的是自己的yuchao163账号仓库下
+		docker push yuchao163/s14-hello-docker 
+		
+	5.登录https://hub.docker.com/查看自己推送的公网镜像
+		
+
+
+
+8.构建公司私有docker仓库，其实就是搭建一个api服务器，通过api可以下载镜像
+	1.下载docker官方提供的私有仓库镜像
+	docker pull  registry
+	2.查看镜像
+	docker images 
+	3.启动一个私有仓库容器
+		docker run -d \
+			-p 5000:5000 \
+			-v /opt/data/registry:/var/lib/registry \
+			registry
+	4.此时可以检查容器进程
+	docker ps 
+	5.此时私有仓库就打开了5000端口，通过端口映射，访问宿主机的5000端口，查看是否通信
+	yum install telnet -y 
+	
+	telnet 127.0.0.1 5000   #检测5000端口是否通信
+	
+	6.修改本地镜像的tag标签，标注我要往哪push镜像
+	docker tag docker.io/hello-world  192.168.12.96:5000/s14-hello
+	
+	7.修改docker配置，允许非安全的传输方式
+	
+		1.vim /etc/docker/daemon.json，写入信息，私有仓库地址，都得改成自己的
+			{"registry-mirrors": ["http://95822026.m.daocloud.io"],
+			"insecure-registries":["192.168.12.96:5000"]
+			}
+		2.修改docker.server 
+			vim /lib/systemd/system/docker.service
+			#写入如下信息，请在[service]中写入		
+			[Service]
+			EnvironmentFile=/etc/docker/daemon.json
+		
+		
+		
+	8.重启docker服务，使得生效
+	systemctl daemon-reload  #重新加载docker配置文件
+	
+	systemctl restart docker #重启docker服务 
+	
+	9. #重启docker服务，会停止容器，因此要再次启动
+	
+		docker ps -a 
+		docker start b23bcfe42e80  #启动这个私有仓库容器
+
+	10.推送本地镜像到 私有仓库 192.168.12.96:5000
+		docker push 192.168.12.96:5000/s14-hello
+
+	11.此时访问api接口，查看私有仓库的数据
+	http://192.168.12.96:5000/v2/_catalog
+
+	
+	
+docker的数据集挂载功能
+-v 参数 挂载宿主机的文件:容器内的文件夹   
+	-v  /opt/data:/opt/s14/ 
+	
+docker run -p 8000:8080 -v /opt/s14:/opt/data/ -d 43d
+	启动容器，通过-v参数挂载
+	挂载容器内的/opt/data/文件夹，其实访问的是宿主机的/opt/s14/
+
+-p   7000:5000
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+redhat enterprice linux  
+	1.熟悉linux环境Python OOP编程，擅长RHEL/centos7操作系统
+	2.熟悉linux常用命令
+	3.熟练使用virtualenvwrapper管理python多个解释器环境
+	4.熟练mysql关系型数据库，CURD，mysql主从复制
+	5.熟练NoSQL非关系型数据库redis,mongodb
+	6.熟练redis主从配置，数据持久化RDB、AOF、redis哨兵维护redis主从高可用，了解redis-cluster 
+	7.擅长nginx上线python项目，使用uwsgi+nginx+supervisor管理python项目
+	8.熟练nginx反向代理，负载均衡配置
+	9.熟悉docker安装配置，常用docker命令，编写dockerfile构建镜像，构建私有docker仓库
+	10.熟悉linux下运维管理软件saltstack
+	11.熟悉ubuntu操作系统
+
+
+
+
+
+
+

@@ -1,0 +1,329 @@
+今日内容：
+
+saltstack博客地址：
+https://www.cnblogs.com/pyyu/p/9465608.html
+在线yaml文件编写：
+http://www.bejson.com/validators/yaml_editor/
+saltstack博客地址：
+https://www.cnblogs.com/pyyu/p/9465608.html
+
+
+
+python的开发领域
+
+django/flask/tornado/sanic/  	后台开发
+
+django rest framewokr 写api接口数据 
+
+编写机器人调用脚本  flask+人工智能  ，有一个是机器人手臂
+
+运维开发领域    cmdb平台开发 (slatstack/ansible + django提供页面+mysql)资产管理平台，运维开发人员，编写cmdb，提供数据展示
+	监控平台二次开发  zabbix二开  nagios二次开发  ，都去了小米，二次开发 open-falcon(golang)  一个监控产品
+	k8s 二次开发业务开发  python/golang 
+	代码发布平台   git+django+jenkins  
+	
+
+
+
+
+
+
+红蜘蛛软件
+
+c/s 
+
+client  : 学生端是客户端 ，装了红蜘蛛客户端-学生端
+
+server端： 教师机  ，装了红蜘蛛软件-教师端 
+
+	教师机，只能管理，  教师机和学生机，相互通信，相互知道的情况下
+	
+
+
+#运维管理工具
+
+ansible	#支持ssh，不需要客户端 
+
+
+saltstack  	#也是只是ssh，不需要客户端的
+	安装架构是，master /minion
+	
+	
+安装salt的依赖模块
+python
+	zeromq	是一个消息队列 ，master和minion通信，需要将master发送的命令，放入一个队列中
+	rabbitmq
+	rpc  远程消息调用
+pyzmp	
+pycrypto
+msgpack-python
+yaml
+	-是一个新兴的语法格式
+	salt 
+	ansible 
+	python 
+	k8s
+	都是遵循yaml语法的配置文件格式
+jinja2
+	模板语言
+	
+	
+#服务器环境准备
+1.master  讲师机
+ip  192.168.12.96    node1				安装salt-master
+
+2.准备多个客户端，被管控端，学生机		安装salt-minion 
+	192.168.12.89    minion1
+	192.168.12.121	minion2
+	192.168.12.8	minion3
+
+	
+3.关闭所有节点的防火墙，以免影响实验
+
+iptables -F 
+
+systemctl stop firewalld
+
+关闭selinux 
+
+4.配置本地文件解析，用于加速身份验证  编辑 /etc/hosts
+通过主机名通信
+
+192.168.12.96    node1	
+192.168.12.89    minion1
+192.168.12.121	minion2
+192.168.12.8	minion3
+
+5.确保环境准备ok，确保每个节点的yum源配置正确
+	wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+	wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+	yum clean all #清空缓存
+	yum makecache #生成yum缓存
+
+6.安装salt软件
+	1.node1端安装salt-master 
+	yum install salt-master -y
+
+	2.在3个minion地址中安装salt-minion 
+	yum install salt-minion -y
+
+
+7.修改master和minion的配置文件
+	1.master的配置文件
+		interface: 0.0.0.0  #绑定到本地的0.0.0.0地址
+		publish_port: 4505　　#管理端口，命令发送
+		user: root　　　　　　#运行salt进程的用户
+		worker_threads: 5　　#salt运行线程数，线程越多处理速度越快，不要超过cpu个数
+		ret_port: 4506　　#执行结果返回端口
+		pidfile: /var/run/salt-master.pid #pid文件位置
+		log_file: /var/log/salt/master　　#日志文件地址
+
+		#自动接收minion的key
+		auto_accept: False
+		
+	2.三个minion的配置文件
+		master: node1
+		master_port: 4506
+		user: root
+		id: s14minion1  #表示minion身份信息的，这里要修改，三个节点，为不同的id
+		acceptance_wait_time: 10
+		log_file: /var/log/salt/minion
+
+		
+		
+		
+8.启动salt-master和salt-minion 
+	systemctl start salt-master 
+	systemctl start salt-minion
+	
+	
+9.在salt软件启动的时候，会进行通信连接，master可以检测到minion的身份地址，此时还未接收key，还未通信，需要认证秘钥才可以通信
+	salt-key -L  #查看所有主机秘钥信息
+	#salt-key参数解析
+		-L  #查看KEY状态
+		-A  #允许所有
+		-D  #删除所有
+		-a  #认证指定的key
+		-d  #删除指定的key
+		-r  #注销掉指定key（该状态为未被认证）
+	
+	
+	#在秘钥通信之前，最好进行秘钥检验
+	master端：
+	salt-key -f  指明节点id   #查看节点的秘钥信息
+	
+	minion端：
+	salt-call --local key.finger  #查看自己的秘钥信息，与master端的进行对比 
+	
+	
+	salt-key -a  minion-id   #指明接收一个minion
+	
+	salt-key -A  #  接收所有minion的秘钥
+	
+	salt  "*" test.ping  #通过salt主命令 匹配所有的已接收的主机  发送ping命令，会得到True 或false
+	
+	salt "*"  cmd.run   #通过执行命令接口，对所有主机，执行命令
+	
+	salt "*" cmd.run  "yum install nginx -y #对所有主机发送安装nginx的命令 
+	
+
+	
+10.salt常用命令
+	1.salt的命令直接输入，叫做执行模块
+	2.saltstack提供了自己的脚本语言 s14salt.sls ，状态模块
+	3.salt的命令语法格式
+	
+salt --summary '*' cmd.run 'yum remove nginx -y'
+	--summary是返回salt命令的执行成功状态
+	"*" 目标匹配字符串
+	cmd.run  模块函数，对所有匹配到的机器，执行后面的参数
+	'yum remove nginx -y'    #参数如下
+
+salt --out=json '*' cmd.run_all 'hostname'
+--out=json #返回salt执行结果为json格式  #json数据反馈给API
+
+salt "*" cmd.run "ls /tmp" 
+
+salt "*" cmd.run_all  "ls /tmp"  
+#cmd.run和cdm.run_all是返回结果的详细的差别
+
+
+#目标定位字符串
+salt 's14minion[1,2,3]' pkg.version redis
+
+'s14minion[1,2,3]'   #匹配s14minion1、s14minion2、s14minion3
+salt 's14minion[1,2,3]' pkg.download redis#只下载redis的rpm包，不安装这是pkg.download函数的功能
+
+pkg模块对应着yum工具
+pkg.install 
+pkg.version 
+pkg.remove 
+pkg.version 
+
+
+#列出pkg所有的方法
+salt '*' sys.list_functions pkg  
+
+  
+#service模块，练习远程安装启动nginx 
+salt 's14minion[1,2,3]' pkg.install nginx 
+
+salt "*" service.status/start/stop/restart nginx
+#通过service模块管理服务
+
+
+#命令执行结果，返回为yaml 
+salt --out=yaml  "*" service.status nginx
+
+
+#s14期，有男同学，有女同学
+
+#python的数据结构
+#大字典 s14值是字典，字典中有两个key，一个是男同学key，值是列表，一个是女同学key，值是列表
+{
+	s14:
+	{
+	"男同学":['kangchen','xiaoma'],
+	"女同学":['wengang','xiaoxue','xiaodilei'],
+	}
+}
+
+
+#yaml语言解析
+在线yaml配置文件编写
+http://www.bejson.com/validators/yaml_editor/
+
+#yaml语法
+#yaml的对象，就是python的字典通过冒号指明字典
+#yaml的数组，就是python的列表，通过  横杠 表示  -  
+#作用域通过缩进层级关系区分
+#空格数量保持一致即可，不要求是几个，默认是2个空格
+
+
+s14:
+  男同学:
+    - kangchen
+    - xiaoma
+    - xiaoyu
+  女同学:
+     - wengang
+     - wengang2
+     - xiaowengang3
+	 
+#对应的python数据结构
+{ s14: 
+   { '男同学': [ 'kangchen', 'xiaoma', 'xiaoyu' ],
+     '女同学': [ 'wengang', 'wengang2', 'xiaowengang3' ] } }
+	 
+
+
+
+#salt直接在命令行输入的命令，叫做
+在命令行输入的命令都是 　　　　		执行模块
+
+等到命令写入到文件中，             就叫做状态模块
+#state模块可以执行salt的sls文件
+
+#sls之salt脚本的编写与使用
+1.更改配置文件，添加如下参数，注意yaml的语法（修改了文件要重启salt服务）
+		file_roots:
+		  base:
+			- /srv/salt/base
+		  dev:
+			- /srv/salt/dev
+		  test:
+			- /srv/salt/test/
+
+2.重启所有的salt服务
+systemctl restart salt-master
+systemctl restart salt-mion 
+#注意重启了服务，秘钥需要再次接受
+
+
+3.编写nginx.sls文件，放在/srv/salt/base底下，（注意，nginx.sls文件，需要在所有机器上都有）
+salt-cp "*"  /srv/salt/base/nginx.sls   /srv/salt/base/   #将master机器上的nginx.sls，批量分发到所有节点上
+
+4.调用state模块，执行nginx.sls文件 
+
+salt "*"  state.sls  nginx    #执行命令
+
+
+#saltstack两大数据管理中心 grains(静态采集数据)  与pillar（动态采集数据）
+#
+
+salt "*" grains.items  #采集所有minion机器的硬件信息，返回字典数据，key和value
+salt "*" grains.item osfullname	#通过item方法，通过key，返回单独的value
+salt "*" grains.item ipv4
+salt "*" grains.item ipv4 os hostname  #支持多key的方式查看信息
+
+#通过-G参数，指明是grains模块，匹配到所有的 操作系统是7系列的机器，然后执行命令
+salt -G 'osrelease:7*' cmd.run "echo 'i am from master....' > /tmp/salt.txt"
+
+
+
+  
+#自定义设置granis数据
+salt "*" grains.setval  my_class s14
+
+#删除自定义grains的值
+salt "*" grains.delval  my_class
+
+
+#如果想永久删除这个key，需要删除minion底下的/etc/salt/grains文件
+
+
+
+
+	
+
+
+
+	
+设置key value的操作 是调用 __setitems__
+del   __del__ 
+__str__
+__len__
+
+流畅的python 
+
+len(变量)

@@ -1,0 +1,596 @@
+day111Linux笔记
+
+
+内容回顾
+redis
+
+1.安装配置redis
+redis.conf  放哪都可以 编译安装的话，就在redis源码的目录
+port 6379
+bind 0.0.0.0
+dir 指明redis数据文件存放路径
+daemonize  yes   #将redis在后台运行，不占用一个终端
+protomode  yes   #安装模式
+requirepeass   s1466  #redis密码登录
+pidfile   #存放redis进程id的文件
+
+RDB持久化的参数
+AOF持久化的参数
+
+#指明master的ip和端口信息
+slaveof  127.0.0.1  6380 
+
+#redis支持多实例 
+redis-server  redis-6379.conf 
+redis-server  redis-6380.conf 
+redis-server  redis-6381.conf 
+
+
+
+
+
+#发布订阅
+发布者
+订阅者
+频道 
+
+#主从同步
+redis主从
+优先
+1.保证数据安全，主从机器两份数据
+一主多从
+2.读写分离，缓解主库压力
+主redis，可读可写
+slave身份，只读
+
+
+
+缺点
+1.手动主从切换
+假如主库挂了，得手动切换
+master   192.168.12.10   挂了 
+
+slave1	192.168.12.11    主库挂了，我得手动选一个slave为新的master
+		1.配置主库地址
+		slaveof 192.168.12.12 6380  
+
+
+slave2  192.168.12.12    
+		1.取消12的从库身份
+		slaveof no one
+		
+2.准备一个值班人，他去检测，redis主从机制，是否宕机，值班人来做这个主从切换的事
+
+
+
+redis哨兵配置：
+1.准备3个redis实例文件
+	-rw-r--r-- 1 root root 145 12月 11 09:14 redis-6379.conf
+	-rw-r--r-- 1 root root 115 12月 11 09:13 redis-6380.conf
+	-rw-r--r-- 1 root root  93 12月 11 09:13 redis-6381.conf
+
+	redis-6379配置文件内容如下
+	cat redis-6379.conf 
+
+	port 6379
+	daemonize yes
+	logfile "6379.log"
+	dbfilename "dump-6379.rdb"
+	dir "/var/redis/data/"
+	daemonize yes 
+
+	#其余6380、6381配置文件，端口确保不同，且配置上主从参数
+	slaveof 127.0.0.1 6379
+	
+2.启动三个redis实例
+	 1030  redis-server redis-6379.conf 
+	 1031  redis-server redis-6380.conf 
+	 1032  redis-server redis-6381.conf 
+
+3.检查三个redis实例的主从身份关系
+1071  redis-cli -p 6379 info replication
+1071  redis-cli -p 6380 info replication
+1072  redis-cli -p 6381 info replication
+
+
+4.配置三个哨兵
+-rw-r--r-- 1 root root 560 12月 11 09:13 redis-sentinel-26379.conf
+-rw-r--r-- 1 root root 560 12月 11 09:13 redis-sentinel-26380.conf
+-rw-r--r-- 1 root root 560 12月 11 09:13 redis-sentinel-26381.conf
+
+
+哨兵配置文件，几乎一致，仅有端口区别
+
+	// Sentinel节点的端口
+	port 26379  
+	dir /var/redis/data/
+	logfile "26379.log"
+
+	// 当前Sentinel节点监控 127.0.0.1:6379 这个主节点
+	// 2代表判断主节点失败至少需要2个Sentinel节点节点同意
+	// mymaster是主节点的别名
+	sentinel monitor mymaster 127.0.0.1 6379 2
+
+	//每个Sentinel节点都要定期PING命令来判断Redis数据节点和其余Sentinel节点是否可达，如果超过30000毫秒30s且没有回复，则判定不可达
+	sentinel down-after-milliseconds mymaster 30000
+
+	//当Sentinel节点集合对主节点故障判定达成一致时，Sentinel领导者节点会做故障转移操作，选出新的主节点，
+	原来的从节点会向新的主节点发起复制操作，限制每次向新的主节点发起复制操作的从节点个数为1
+	sentinel parallel-syncs mymaster 1
+
+	//故障转移超时时间为180000毫秒
+	sentinel failover-timeout mymaster 180000
+
+	
+	
+5.启动三个redis哨兵
+
+ 1053  redis-sentinel redis-sentinel-26379.conf 
+ 1054  redis-sentinel redis-sentinel-26380.conf 
+ 1055  redis-sentinel redis-sentinel-26381.conf
+ 
+ 
+6.检查redis哨兵身份信息，检查主从节点健康状态
+
+ 1058  redis-cli -p 26379 info sentinel
+ 1059  redis-cli -p 26380 info sentinel
+ 1060  redis-cli -p 26381 info sentinel
+
+ 
+7.配置正确后，杀死master节点，查看主从身份切换是否正常
+
+
+
+
+
+1,2,3,4,5,6...100
+
+
+1%3   1
+2%3		2
+3%3		0 
+
+
+将余数为1分给一匹马
+
+
+讲余数为2的分给马2
+
+
+余数为0的分给马3
+
+
+
+
+ruby语言脚本，一键自动安装redis-cluster
+
+redis-cluster就是什么
+
+将我所有的数据，keys * 
+
+分配6匹马，6匹马的身份信息
+
+3个主
+
+3个从
+
+
+
+redis-cluster使用的哈希槽算法，将数据分为0~16383的槽位
+
+
+将所有的keys 分配到这些槽位当中
+
+
+
+
+安装配置手册
+1.准备6个redis节点，也就是准备6匹马
+
+redis可以自定制端口，你可以用6379，也可以用7000
+
+-rw-r--r-- 1 root root 185 12月 11 09:51 redis-7000.conf
+-rw-r--r-- 1 root root 185 12月 11 09:52 redis-7001.conf
+-rw-r--r-- 1 root root 185 12月 11 09:52 redis-7002.conf
+-rw-r--r-- 1 root root 185 12月 11 09:52 redis-7003.conf
+-rw-r--r-- 1 root root 185 12月 11 09:52 redis-7004.conf
+-rw-r--r-- 1 root root 185 12月 11 09:52 redis-7005.conf
+
+
+
+
+查看redis配置文件，修改这6个文件的端口不同
+
+	sed   's/7000/7001/g' redis-7000.conf    #此时还未生效，只返回处理结果
+		-i 参数，写入到文件 insert 
+		
+	sed  -i  's/7000/7001/g' redis-7000.conf  #对这个文件修改
+
+	sed    's/7000/7001/g'    redis-7000.conf   >  redis-7001.conf
+
+	sed 	linux处理字符串的命令
+
+	's/7000/7001/g'     第二空格 放入你想替换的内容 
+		s  代表替换指令
+		/你想换的内容/你想替换后的内容/
+		g 全局替换 globol 
+	 
+	 redis-7000.conf   操作的对象，将这个文件内的所有7000替换为7001
+ 
+
+2.准备6个配置文件redis.conf 
+	-rw-r--r-- 1 root root 182 12月 11 10:01 redis-7000.conf
+	-rw-r--r-- 1 root root 182 12月 11 10:01 redis-7001.conf
+	-rw-r--r-- 1 root root 182 12月 11 10:02 redis-7002.conf
+	-rw-r--r-- 1 root root 182 12月 11 10:02 redis-7003.conf
+	-rw-r--r-- 1 root root 182 12月 11 10:02 redis-7004.conf
+	-rw-r--r-- 1 root root 182 12月 11 10:02 redis-7005.conf
+
+	配置文件内容如下：
+		port 7000
+		daemonize yes
+		dir "/opt/redis/data"
+		logfile "7000.log"
+		dbfilename "dump-7000.rdb"
+		cluster-enabled yes 
+		cluster-config-file nodes-7000.conf
+		cluster-require-full-coverage no
+		
+	6个配置文件，仅仅是端口的区别，可以使用sed命令快速生成配配置文件
+		1117  sed 's/7000/7001/g'  redis-7000.conf > redis-7001.conf
+		1118  sed 's/7000/7002/g'  redis-7000.conf > redis-7002.conf
+		1119  sed 's/7000/7003/g'  redis-7000.conf > redis-7003.conf
+		1120  sed 's/7000/7004/g'  redis-7000.conf > redis-7004.conf
+		1121  sed 's/7000/7005/g'  redis-7000.conf > redis-7005.conf
+
+
+3.启动6个redis实例
+	 1133  redis-server redis-7000.conf 
+	 1134  redis-server redis-7001.conf 
+	 1136  redis-server redis-7002.conf 
+	 1137  redis-server redis-7003.conf 
+	 1138  redis-server redis-7004.conf 
+	 1139  redis-server redis-7005.conf 
+
+4.检查redis进程信息
+	[root@node1 /opt/redis-4.0.10/myjiqun 10:05:42]#ps -ef|grep redis
+	root       9478      1  0 10:04 ?        00:00:00 redis-server *:7000 [cluster]
+	root       9483      1  0 10:04 ?        00:00:00 redis-server *:7001 [cluster]
+	root       9490      1  0 10:04 ?        00:00:00 redis-server *:7002 [cluster]
+	root       9495      1  0 10:04 ?        00:00:00 redis-server *:7003 [cluster]
+	root       9500      1  0 10:04 ?        00:00:00 redis-server *:7004 [cluster]
+	root       9505      1  0 10:04 ?        00:00:00 redis-server *:7005 [cluster]
+
+5.安装配置ruby环境，用于一键搭建redis集群
+	1.下载源码
+		wget https://cache.ruby-lang.org/pub/ruby/2.3/ruby-2.3.1.tar.gz
+	2.解压缩ruby
+		tar -xvf ruby-2.3.1.tar.gz
+	3.编译安装ruby
+		./configure --prefix=/opt/ruby/
+		make && make install
+	
+6.准备ruby的环境变量
+cp ./bin/ruby   /usr/local/bin/
+cp ./bin/gem   /usr/local/bin
+
+7.下载ruby的软件包管理工具
+wget http://rubygems.org/downloads/redis-3.3.0.gem
+gem install -l redis-3.3.0.gem  #安装ruby操作redis的模块
+
+8.查看ruby语言的包邮哪些
+gem list -- check redis gem
+
+9.配置环境变量redis-trib.rb，用于创建redis-cluster 
+	#找到这个redis-trib.rb命令在哪里
+	[root@node1 /opt/redis-4.0.10/src 10:28:32]#find /opt  -name redis-trib.rb
+	/opt/redis-4.0.10/src/redis-trib.rb
+	#配置环境变量，用于快速执行redis-trib.rb这个命令 
+	cp /opt/redis-4.0.10/src/redis-trib.rb    /usr/local/bin/
+
+10.通过redis-trib.rb命令，一键创建redis-cluster集群功能
+	#其实就是分配槽位，分配主从关系
+	#通过这个命令，创建集群功能
+	#1  代表每个主只有一个从
+	#自动给后面6个节点，分配主从关系，7000、7001、7002是主节点，7003、7004、7005是从节点
+	redis-trib.rb create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
+	
+
+11.
+写入数据来使用redis集群了
+
+redis查看身份的命令，可以来检查集群的节点身份信息
+redis-cli -p 7003 info replication     #查看主从身份信息
+redis-cli -p 7004 info replication#查看主从身份信息
+redis-cli -p 7005 info replication#查看主从身份信息
+
+#查看redis集群状态信息
+redis-cli -p 7000 cluster info    #查看节点集群状态
+
+#redis操作集群数据
+# 通过-c参数才能指定集群功能
+redis-cli -p 7000 -c  
+
+
+
+
+
+
+服务器环境
+
+第一代：服务器+ centos  
+第二代：服务器+windows+vmware workstation（学习版）+centos7     机器垃圾，只能安装10个以内的虚拟机 +  django应用
+
+		dell poweer ege R720  
+		实体服务器，26台，托管在上海世纪互联机房托管中心
+		还有自建机房（5台内网服务器）
+		通过R720实体服务器，通过vmware esxi(支持windows，linux)
+		虚拟化出280+的linux操作系统
+			100+redhat
+			100+centos 
+			
+		服务器环境分为三个阶段
+		
+		线上服务器(对客户提供服务)
+		
+		即将上线服务器（测试环境）
+		
+		本地测试代码环境（）
+		
+		
+			
+		
+			
+		服务器+vmware esxi（企业版虚拟化)+linux 
+										+centos
+										+redhat
+										+suse
+第三代:服务器 + opnstatck 云虚拟化
+
+第四代：服务器 + vmware esxi +  docker + django应用 
+
+
+我们个人学习 笔记本+vmware +centos+docker +django 
+
+						
+
+
+解决环境依赖的问题
+1.虚拟机，定制操作系统模板
+
+vmware esxi  定制一个 centos镜像板块，我在这模板中定制我的功能，安装vim  安装 python3  安装 django 
+通过镜像模块安装系统，也可以解决环境依赖的问题
+
+
+
+
+
+
+docker三大概念
+容器三大基本概念
+
+
+镜像 image
+
+class 
+
+
+
+容器 container
+
+class()
+
+
+
+
+仓库 repository  (存放镜像文件的地方)  我可以去公网去，下载镜像
+
+
+
+docker整个生命周期就是这三个概念。
+
+
+
+
+#centos安装docker
+
+1.编译安装，源码安装
+
+2.yum安装
+	#如果网速太慢，你可以选择阿里云的源，缺点就是版本低
+	#你可以选择用aliyun的yum源，docker就存在epel源中
+	#如果网速够快，或者在公司中，一定要装官方源
+	#配置docker的官方源，一定是官方的最好啊
+	
+	
+	#由于配置不了官方的docker仓库，咱们选择阿里云
+	1.yum install docker* docker-*  -y  #安装docker服务端
+	2.启动docker
+	systemctl start docker 
+	
+	systemctl status  docker 
+	
+	3.查看docker是否正确启动
+	docker version 
+	
+	
+	
+	4.简单使用docker
+	docker search hello-world
+	docker pull hello-world  
+	docker image ls   #查看镜像
+	#等于
+	docker images  #查看镜像
+	docker run 镜像名/镜像id（可以写前三位）   #运行一个docker容器实例
+	docker ps  #查看docker进程
+	docker ps -a  #查看所有运行过的docker容器记录
+
+3.rpm安装
+
+
+
+docker三大概念：
+容器（如同通过class类的实例化对象），也就是可以通过一个镜像，创建多个容器实例
+
+
+
+
+镜像(如同class类)
+
+
+
+仓库
+
+
+docker常用命令：
+
+
+增
+增加容器记录，启动容器
+
+docker run 镜像id/镜像名  #运行创建一个容器container实例
+
+docker run -it  centos   #此命令会 进入到容器空间内，进入到容器的centos中
+-i 交互式界面
+-t 是开启一个终端
+
+docker run -it  --rm  ubuntu   #运行一个乌班图容器，并且在退出是，删除容器运行记录
+
+
+
+docker run centos   
+#直接运行这个centos镜像，会生成一个容器记录
+#此时就会生成一个容器记录，但是容器中并没有任何的后台程序，因此直接就挂掉
+# 你会发现，容器死活不生成，docker ps 看不到记录，
+
+docker run -d centos /bin/sh -c "while true;do echo hello s14 docker~~~~; sleep 1;done"
+#一定会生成一个容器记录
+#docker ps  能不能看到记录？
+
+-d 参数是  后台运行
+/bin/sh  调用shell解释器
+-c 指明一段shell语法
+
+
+
+
+
+docker pull centos  #下载docker的镜像
+
+
+
+
+删
+
+docker rm 容器id  #docker rm删除的是已经停止的容器id
+
+docker rmi  镜像id   #删除一个镜像记录 
+
+docker rm `docker ps -aq` # 一次性删除所有容器id记录
+	` `   #反引号是取命令的运行结果 
+
+docker rmi `docker images -aq`   #一次性删除所有镜像记录
+
+
+
+
+改
+
+docker commit  #提供容器记录，为新的镜像
+docker stop  容器id  #停止正在运行的容器
+docker start 容器id  #启动一个关闭中的容器
+
+#导出镜像
+docker save centos > /opt/centos.tar.gz  #导出docker镜像至本地
+
+#导入镜像
+docker load < /opt/centos.tar.gz
+#通过--name参数给容器记录，加上别名
+docker run --name s14hehe -d centos /bin/sh -c "while true;do echo hello s14 docker~~~~; sleep 1;done"
+
+#进入正在运行的容器
+docker exec -it c49  /bin/bash
+
+
+-it  交互式的操作终端
+/bin/bash使用shell解释器，只有在redhat，centos系统中，才能用/bin/bash 
+
+
+#提交自定义的镜像文件（自己修改了容器记录，提交成一个新的镜像，可以发给别人使用）
+#需求是？
+1.默认的centos镜像，没有vim 
+2.我们自己run一个容器记录，安装vim，然后提交成新的镜像文件
+docker commit 24c1ef3f8da8 s14/centos-vim
+
+3.查看新的镜像记录
+docker images  
+s14/centos-vim          latest              01b0298ec5b0        7 seconds ago       327 MB
+
+
+4.可以通过新的带有vim的镜像运行容器记录，通过此方法可以解决环境难配置的问题
+docker run -it s14/centos-vim    /bin/bash 
+
+
+查
+
+docker image  ls  #查看镜像记录
+docker images  #查看镜像记录 
+
+docker ps    #查看容器记录  ，只能查看到正在运行中的容器
+		     #正在运行中的容器，代表，容器后台一定有个进程在运行
+			 
+docker ps -a #查看停止的和在运行的容器记录
+
+docker container ls -a  #等同于docker ps -a 
+
+
+
+docker logs -f 容器id  #查看正在运行中的 容器内日志
+-f  不间断打印 
+
+
+
+
+#其他
+#容器内应用，外部也是可以访问的
+#通过-P参数进行端口映射
+
+#运行一个web容器实例
+1.下载镜像
+docker pull training/webapp  
+2.运行镜像，产生容器记录
+docker run -d -P 6fa  python app.py
+-d 后台运行
+-P  将容器内的5000端口随机映射到宿主机的一个端口
+
+
+
+docker port 容器id 
+[root@node1 /opt/redis-4.0.10/src 16:00:41]#docker port ebb7
+5000/tcp -> 0.0.0.0:32768
+
+
+
+
+
+
+
+
+
+
+
+
+#docker镜像加速器
+#执行命令
+curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://f1361db2.m.daocloud.io
+#其实就是更改了，docker的一个仓库源
+[root@node1 /opt/redis-4.0.10/src 14:48:26]#cat /etc/docker/daemon.json
+{
+    "registry-mirrors": [
+        "http://95822026.m.daocloud.io"
+    ],
+    "insecure-registries": []
+}
+
+
+
